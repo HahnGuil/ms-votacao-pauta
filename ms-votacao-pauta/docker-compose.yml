@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  mongo-votacaodbHO:
+    image: mongo:7
+    container_name: mongo-votacaodbHO
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: votacaodbHO
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-ho-data:/data/db
+    networks:
+      - app-network
+
+  mongo-votacaodbDev:
+    image: mongo:7
+    container_name: mongo-votacaodbDev
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: votacaodbDev
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo-dev-data:/data/db
+    networks:
+      - app-network
+
+volumes:
+  mongo-ho-data:
+  mongo-dev-data:
+
+networks:
+  app-network:
