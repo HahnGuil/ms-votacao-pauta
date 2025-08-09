@@ -17,14 +17,14 @@ public class UserService {
     }
 
     public UserResponseDTO createUser(UserRequestDTO userRequestDTO){
-        User user = userRepository.save(convertToDTO(userRequestDTO));
+        User user = userRepository.save(convertToCollection(userRequestDTO));
         if(userRepository.existsByuserCPF(user.getUserCPF())){
            throw new UserAlreadyExistsException("There is already a registered user for this CPF");
         }
         return new UserResponseDTO(user.getUserId(), user.getUserCPF());
     }
 
-    private User convertToDTO(UserRequestDTO userRequestDTO){
+    private User convertToCollection(UserRequestDTO userRequestDTO){
         User user = new User();
         user.setUserName(userRequestDTO.userName());
         user.setUserCPF(userRequestDTO.userCPF());
