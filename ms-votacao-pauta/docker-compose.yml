@@ -4,6 +4,7 @@ services:
   mongo-votacaodbHO:
     image: mongo:7
     container_name: mongo-votacaodbHO
+    restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: admin123
@@ -11,13 +12,21 @@ services:
     ports:
       - "27017:27017"
     volumes:
+      - mongo_ho_data:/data/db
       - ./init-mongo-ho.js:/docker-entrypoint-initdb.d/init-mongo-ho.js:ro
     networks:
       - app-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
 
   mongo-votacaodbDev:
     image: mongo:7
     container_name: mongo-votacaodbDev
+    restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: admin123
@@ -25,10 +34,68 @@ services:
     ports:
       - "27018:27017"
     volumes:
+      - mongo_dev_data:/data/db
       - ./init-mongo-dev.js:/docker-entrypoint-initdb.d/init-mongo-dev.js:ro
     networks:
       - app-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: kafka
+    restart: unless-stopped
+    environment:
+      # Configuração KRaft (sem Zookeeper)
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_LOG_DIRS=/opt/bitnami/kafka/logs
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/opt/bitnami/kafka/logs
+    networks:
+      - app-network
+    healthcheck:
+      test: kafka-topics.sh --bootstrap-server localhost:9092 --list
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
 networks:
   app-network:
     driver: bridge
+
+volumes:
+  mongo_ho_data:
+  mongo_dev_data:
+  kafka_data:
+  redis_data:
