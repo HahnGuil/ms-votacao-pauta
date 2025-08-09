@@ -10,7 +10,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
-@Document(collation = "voting")
+@Document
 @Getter
 @Setter
 @AllArgsConstructor

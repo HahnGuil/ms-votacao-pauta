@@ -2,6 +2,7 @@ package br.com.hahn.votacao.domain.service;
 
 import br.com.hahn.votacao.domain.dto.request.UserRequestDTO;
 import br.com.hahn.votacao.domain.dto.response.UserResponseDTO;
+import br.com.hahn.votacao.domain.exception.UserAlreadyExistsException;
 import br.com.hahn.votacao.domain.model.User;
 import br.com.hahn.votacao.domain.respository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -17,16 +18,16 @@ public class UserService {
 
     public UserResponseDTO createUser(UserRequestDTO userRequestDTO){
         User user = userRepository.save(convertToDTO(userRequestDTO));
-
+        if(userRepository.existsByuserCPF(user.getUserCPF())){
+           throw new UserAlreadyExistsException("There is already a registered user for this CPF");
+        }
         return new UserResponseDTO(user.getUserId(), user.getUserCPF());
     }
 
     private User convertToDTO(UserRequestDTO userRequestDTO){
         User user = new User();
-
         user.setUserName(userRequestDTO.userName());
         user.setUserCPF(userRequestDTO.userCPF());
-
         return user;
     }
 }
