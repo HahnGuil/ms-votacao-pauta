@@ -21,7 +21,9 @@ public class VoteController {
     @PostMapping("/{votingId}")
     public Mono<ResponseEntity<VoteResponseDTO>> vote(@PathVariable String votingId, @RequestBody VoteRequestDTO voteRequestDTO) {
         VoteRequestDTO vote = new VoteRequestDTO(votingId, voteRequestDTO.userId(), voteRequestDTO.voteOption());
-        return Mono.fromCallable(() -> voteService.vote(vote))
-                .map(voteResponseDTO -> ResponseEntity.status(HttpStatus.CREATED).body(voteResponseDTO));
+        return Mono.fromCallable(() -> {
+            voteService.sendVoteToQueue(vote);
+            return new VoteResponseDTO("Voto recebido com sucesso");
+        }).map(voteResponseDTO -> ResponseEntity.status(HttpStatus.CREATED).body(voteResponseDTO));
     }
 }

@@ -5,6 +5,7 @@ import br.com.hahn.votacao.domain.dto.response.VotingResponseDTO;
 import br.com.hahn.votacao.domain.exception.InvalidFormatExpirationDate;
 import br.com.hahn.votacao.domain.model.Voting;
 import br.com.hahn.votacao.domain.respository.VotingRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -19,9 +20,14 @@ public class VotingService {
         this.votingRepository = votingRepository;
     }
 
-    public VotingResponseDTO createVoting(VotingRequestDTO votingRequestDTO){
+    @Value("${server.port}")
+    private String serverPort;
+
+    private static final String VOTING_CONTEXT = "/vote";
+
+    public VotingResponseDTO createVoting(VotingRequestDTO votingRequestDTO) {
         Voting voting = votingRepository.save(convertToCollection(votingRequestDTO));
-        String voteUrl = "/vote/" + voting.getVotingId();
+        String voteUrl = "http://localhost:" + serverPort + VOTING_CONTEXT + voting.getVotingId();
         return new VotingResponseDTO(voting.getVotingId(), voteUrl, voting.getCloseVotingDate());
     }
 
