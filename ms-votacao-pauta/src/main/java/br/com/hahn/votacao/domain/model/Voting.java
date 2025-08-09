@@ -22,5 +22,5 @@ public class Voting {
     private String subject;
     private Instant openVotingDate;
     private Instant closeVotingDate;
-    private String votingSatus;
+    private boolean votingSatus;
 }
