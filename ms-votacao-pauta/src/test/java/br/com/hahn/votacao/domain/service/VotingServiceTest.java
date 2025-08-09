@@ -60,8 +60,6 @@ class VotingServiceTest {
     void testCreateVoting_InvalidExpirationDate_ThrowsException() {
         VotingRequestDTO request = new VotingRequestDTO("Assunto Teste", "invalid");
 
-        // Since the exception is thrown synchronously during createVoting execution,
-        // we need to catch it directly instead of using StepVerifier
         InvalidFormatExpirationDate exception = assertThrows(InvalidFormatExpirationDate.class, () -> {
             votingService.createVoting(request);
         });
