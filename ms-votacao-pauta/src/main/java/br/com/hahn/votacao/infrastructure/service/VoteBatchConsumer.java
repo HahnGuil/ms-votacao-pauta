@@ -44,11 +44,6 @@ public class VoteBatchConsumer {
             batch.add(vote);
             batchKeys.add(voteKey);
             logger.info("Accepted vote for votingId: {}, userCPF: {}", vote.votingId(), vote.userId());
-
-            if (batch.size() >= 30) {
-                logger.info("Batch size reached 30. Flushing batch to database");
-                flushBatch();
-            }
         }
     }
 
