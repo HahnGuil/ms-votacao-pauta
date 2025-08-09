@@ -19,7 +19,7 @@ public class Voting {
 
     @Id
     private String votingId;
-    private String idSubject;
+    private String subject;
     private Instant openVotingDate;
     private Instant closeVotingDate;
     private String votingSatus;
