@@ -41,8 +41,8 @@ class UserServiceTest {
         assertNotNull(response);
         assertEquals("1", response.userId());
         assertEquals("12345678901", response.userCPF());
-        verify(userRepository).save(any(User.class));
         verify(userRepository).existsByuserCPF("12345678901");
+        verify(userRepository).save(any(User.class));
     }
 
     @Test
@@ -57,5 +57,88 @@ class UserServiceTest {
         verify(userRepository, never()).save(any(User.class));
         verify(userRepository).existsByuserCPF("98765432100");
     }
-}
 
+    @Test
+    void testCreateUser_BlankCPF() {
+        UserRequestDTO request = new UserRequestDTO("Blank CPF", "");
+        User user = new User();
+        user.setUserId("2");
+        user.setUserName("Blank CPF");
+        user.setUserCPF("");
+
+        when(userRepository.existsByuserCPF("")).thenReturn(Mono.just(false));
+        when(userRepository.save(any(User.class))).thenReturn(Mono.just(user));
+
+        Mono<UserResponseDTO> responseMono = userService.createUser(request);
+
+        UserResponseDTO response = responseMono.block();
+        assertNotNull(response);
+        assertEquals("2", response.userId());
+        assertEquals("", response.userCPF());
+        verify(userRepository).existsByuserCPF("");
+        verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    void testCreateUser_BlankName() {
+        UserRequestDTO request = new UserRequestDTO("", "11122233344");
+        User user = new User();
+        user.setUserId("3");
+        user.setUserName("");
+        user.setUserCPF("11122233344");
+
+        when(userRepository.existsByuserCPF("11122233344")).thenReturn(Mono.just(false));
+        when(userRepository.save(any(User.class))).thenReturn(Mono.just(user));
+
+        Mono<UserResponseDTO> responseMono = userService.createUser(request);
+
+        UserResponseDTO response = responseMono.block();
+        assertNotNull(response);
+        assertEquals("3", response.userId());
+        assertEquals("11122233344", response.userCPF());
+        verify(userRepository).existsByuserCPF("11122233344");
+        verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    void testCreateUser_NullCPF() {
+        UserRequestDTO request = new UserRequestDTO("Null CPF", null);
+        User user = new User();
+        user.setUserId("4");
+        user.setUserName("Null CPF");
+        user.setUserCPF(null);
+
+        when(userRepository.existsByuserCPF(null)).thenReturn(Mono.just(false));
+        when(userRepository.save(any(User.class))).thenReturn(Mono.just(user));
+
+        Mono<UserResponseDTO> responseMono = userService.createUser(request);
+
+        UserResponseDTO response = responseMono.block();
+        assertNotNull(response);
+        assertEquals("4", response.userId());
+        assertNull(response.userCPF());
+        verify(userRepository).existsByuserCPF(null);
+        verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    void testCreateUser_NullName() {
+        UserRequestDTO request = new UserRequestDTO(null, "55566677788");
+        User user = new User();
+        user.setUserId("5");
+        user.setUserName(null);
+        user.setUserCPF("55566677788");
+
+        when(userRepository.existsByuserCPF("55566677788")).thenReturn(Mono.just(false));
+        when(userRepository.save(any(User.class))).thenReturn(Mono.just(user));
+
+        Mono<UserResponseDTO> responseMono = userService.createUser(request);
+
+        UserResponseDTO response = responseMono.block();
+        assertNotNull(response);
+        assertEquals("5", response.userId());
+        assertEquals("55566677788", response.userCPF());
+        verify(userRepository).existsByuserCPF("55566677788");
+        verify(userRepository).save(any(User.class));
+    }
+}
