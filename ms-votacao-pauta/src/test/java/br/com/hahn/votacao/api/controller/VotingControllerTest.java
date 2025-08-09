@@ -35,6 +35,7 @@ class VotingControllerTest {
         ResponseEntity<VoteResponseDTO> response = resultMono.block();
         assertNotNull(response);
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertNotNull(response.getBody());
         assertEquals("Voto recebido com sucesso", response.getBody().message());
         verify(voteService, times(1)).sendVoteToQueue(any(VoteRequestDTO.class));
     }
