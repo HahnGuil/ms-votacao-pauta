@@ -23,9 +23,8 @@ public class VotingController {
 
     @PostMapping("/create-voting")
     public Mono<ResponseEntity<VotingResponseDTO>> createVoting(@RequestBody VotingRequestDTO votingRequestDTO){
-        return Mono.fromCallable(() -> this.votingService.createVoting(votingRequestDTO))
+        return votingService.createVoting(votingRequestDTO)
                 .map(votingResponseDTO -> ResponseEntity.status(HttpStatus.CREATED).body(votingResponseDTO));
     }
-
 
 }

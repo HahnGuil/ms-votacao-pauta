@@ -23,8 +23,8 @@ public class UserController {
 
     @PostMapping("/create-user")
     public Mono<ResponseEntity<UserResponseDTO>> createUser(@RequestBody UserRequestDTO userRequestDTO) {
-        return Mono.fromCallable(() -> userService.createUser(userRequestDTO))
-                .map(userResponseDTO -> ResponseEntity.status(HttpStatus.CREATED).body(userResponseDTO));
+        return userService.createUser(userRequestDTO)
+                .map(userResponseDTO -> new ResponseEntity<>(userResponseDTO, HttpStatus.CREATED));
     }
 
 }

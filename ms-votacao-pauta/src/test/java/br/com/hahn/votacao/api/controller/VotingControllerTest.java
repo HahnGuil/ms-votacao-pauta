@@ -1,8 +1,8 @@
 package br.com.hahn.votacao.api.controller;
 
-import br.com.hahn.votacao.domain.dto.request.VotingRequestDTO;
-import br.com.hahn.votacao.domain.dto.response.VotingResponseDTO;
-import br.com.hahn.votacao.domain.service.VotingService;
+import br.com.hahn.votacao.domain.dto.request.VoteRequestDTO;
+import br.com.hahn.votacao.domain.dto.response.VoteResponseDTO;
+import br.com.hahn.votacao.domain.service.VoteService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -12,8 +12,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import reactor.core.publisher.Mono;
 
-import java.time.Instant;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -21,30 +19,24 @@ import static org.mockito.Mockito.*;
 class VotingControllerTest {
 
     @Mock
-    private VotingService votingService;
+    private VoteService voteService;
 
     @InjectMocks
-    private VotingController votingController;
+    private VoteController voteController;
 
     @Test
-    void testCreateVoting_ReturnsCreatedResponse() {
-        VotingRequestDTO mockRequest = new VotingRequestDTO("Teste", "5");
+    void testVote_ReturnsCreatedResponse() {
+        String votingId = "123";
+        VoteRequestDTO mockRequest = new VoteRequestDTO(votingId, "user1", "SIM");
+        when(voteService.sendVoteToQueue(any(VoteRequestDTO.class))).thenReturn(Mono.empty());
 
-        String votingId = "6896c1cd2cf92a49ee6ddc14";
-        String voteUrl = "http://localhost/voting/" + votingId;
-        Instant closeVotingDate = Instant.now().plusSeconds(300);
+        Mono<ResponseEntity<VoteResponseDTO>> resultMono = voteController.vote(votingId, mockRequest);
 
-        VotingResponseDTO mockResponse = new VotingResponseDTO(votingId, voteUrl, closeVotingDate);
-
-        when(votingService.createVoting(mockRequest)).thenReturn(mockResponse);
-
-        Mono<ResponseEntity<VotingResponseDTO>> resultMono = votingController.createVoting(mockRequest);
-
-        ResponseEntity<VotingResponseDTO> response = resultMono.block();
+        ResponseEntity<VoteResponseDTO> response = resultMono.block();
         assertNotNull(response);
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertEquals(mockResponse, response.getBody());
-        verify(votingService, times(1)).createVoting(mockRequest);
+        assertEquals("Voto recebido com sucesso", response.getBody().message());
+        verify(voteService, times(1)).sendVoteToQueue(any(VoteRequestDTO.class));
     }
 }
 

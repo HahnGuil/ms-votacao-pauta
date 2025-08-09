@@ -29,7 +29,7 @@ class UserControllerTest {
         // Arrange
         UserRequestDTO mockRequest = new UserRequestDTO("João da Silva", "11111111111");
         UserResponseDTO mockResponse = new UserResponseDTO("João da Silva", "11111111111");
-        when(userService.createUser(mockRequest)).thenReturn(mockResponse);
+        when(userService.createUser(mockRequest)).thenReturn(Mono.just(mockResponse));
 
         // Act
         Mono<ResponseEntity<UserResponseDTO>> resultMono = userController.createUser(mockRequest);

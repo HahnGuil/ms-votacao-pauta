@@ -2,10 +2,10 @@ package br.com.hahn.votacao.domain.service;
 
 import br.com.hahn.votacao.domain.dto.request.UserRequestDTO;
 import br.com.hahn.votacao.domain.dto.response.UserResponseDTO;
-import br.com.hahn.votacao.domain.exception.UserAlreadyExistsException;
 import br.com.hahn.votacao.domain.model.User;
-import br.com.hahn.votacao.domain.respository.UserRepository;
+import br.com.hahn.votacao.domain.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 @Service
 public class UserService {
@@ -16,15 +16,13 @@ public class UserService {
         this.userRepository = userRepository;
     }
 
-    public UserResponseDTO createUser(UserRequestDTO userRequestDTO){
-        User user = userRepository.save(convertToCollection(userRequestDTO));
-        if(userRepository.existsByuserCPF(user.getUserCPF())){
-           throw new UserAlreadyExistsException("There is already a registered user for this CPF");
-        }
-        return new UserResponseDTO(user.getUserId(), user.getUserCPF());
+    public Mono<UserResponseDTO> createUser(UserRequestDTO userRequestDTO) {
+        User user = convertToCollection(userRequestDTO);
+        return userRepository.save(user)
+                .map(savedUser -> new UserResponseDTO(savedUser.getUserId(), savedUser.getUserCPF()));
     }
 
-    private User convertToCollection(UserRequestDTO userRequestDTO){
+    private User convertToCollection(UserRequestDTO userRequestDTO) {
         User user = new User();
         user.setUserName(userRequestDTO.userName());
         user.setUserCPF(userRequestDTO.userCPF());

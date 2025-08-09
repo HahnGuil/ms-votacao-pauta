@@ -3,10 +3,14 @@ package br.com.hahn.votacao.domain.service;
 import br.com.hahn.votacao.domain.dto.request.VotingRequestDTO;
 import br.com.hahn.votacao.domain.dto.response.VotingResponseDTO;
 import br.com.hahn.votacao.domain.exception.InvalidFormatExpirationDate;
+import br.com.hahn.votacao.domain.exception.VotingExpiredException;
+import br.com.hahn.votacao.domain.exception.VotingNotFoundException;
 import br.com.hahn.votacao.domain.model.Voting;
-import br.com.hahn.votacao.domain.respository.VotingRepository;
+import br.com.hahn.votacao.domain.repository.VotingRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -23,12 +27,35 @@ public class VotingService {
     @Value("${server.port}")
     private String serverPort;
 
-    private static final String VOTING_CONTEXT = "/vote";
+    private static final String VOTING_CONTEXT = "/vote/";
 
-    public VotingResponseDTO createVoting(VotingRequestDTO votingRequestDTO) {
-        Voting voting = votingRepository.save(convertToCollection(votingRequestDTO));
-        String voteUrl = "http://localhost:" + serverPort + VOTING_CONTEXT + voting.getVotingId();
-        return new VotingResponseDTO(voting.getVotingId(), voteUrl, voting.getCloseVotingDate());
+    public Mono<VotingResponseDTO> createVoting(VotingRequestDTO votingRequestDTO) {
+        Voting voting = convertToCollection(votingRequestDTO);
+        return votingRepository.save(voting)
+                .map(savedVoting -> {
+                    String voteUrl = "http://localhost:" + serverPort + VOTING_CONTEXT + savedVoting.getVotingId();
+                    return new VotingResponseDTO(savedVoting.getVotingId(), voteUrl, savedVoting.getCloseVotingDate());
+                });
+    }
+
+    public Flux<Voting> findAllVotings() {
+        return votingRepository.findAll();
+    }
+
+    public Mono<Voting> saveVoting(Voting voting) {
+        return votingRepository.save(voting);
+    }
+
+    public Mono<Void> validateExpireVotingTime(String votingId) {
+        return votingRepository.findById(votingId)
+                .switchIfEmpty(Mono.error(new VotingNotFoundException("Voting not found for this " + votingId)))
+                .flatMap(voting -> {
+                    Instant now = Instant.now();
+                    if (now.isAfter(voting.getCloseVotingDate())) {
+                        return Mono.error(new VotingExpiredException("This voting has expired, you can no longer vote."));
+                    }
+                    return Mono.empty();
+                });
     }
 
     private Voting convertToCollection(VotingRequestDTO votingRequestDTO){
@@ -38,6 +65,7 @@ public class VotingService {
         voting.setSubject(votingRequestDTO.subject());
         voting.setOpenVotingDate(openVotingDate);
         voting.setCloseVotingDate(createExpirationDate(openVotingDate, votingRequestDTO.userDefinedExpirationDate()));
+        voting.setVotingSatus(true);
 
         return voting;
     }

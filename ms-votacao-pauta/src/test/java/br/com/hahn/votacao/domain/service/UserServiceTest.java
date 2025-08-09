@@ -4,12 +4,13 @@ import br.com.hahn.votacao.domain.dto.request.UserRequestDTO;
 import br.com.hahn.votacao.domain.dto.response.UserResponseDTO;
 import br.com.hahn.votacao.domain.exception.UserAlreadyExistsException;
 import br.com.hahn.votacao.domain.model.User;
-import br.com.hahn.votacao.domain.respository.UserRepository;
+import br.com.hahn.votacao.domain.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.core.publisher.Mono;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -31,11 +32,12 @@ class UserServiceTest {
         user.setUserName("John Doe");
         user.setUserCPF("12345678901");
 
-        when(userRepository.save(any(User.class))).thenReturn(user);
-        when(userRepository.existsByuserCPF("12345678901")).thenReturn(false);
+        when(userRepository.existsByuserCPF("12345678901")).thenReturn(Mono.just(false));
+        when(userRepository.save(any(User.class))).thenReturn(Mono.just(user));
 
-        UserResponseDTO response = userService.createUser(request);
+        Mono<UserResponseDTO> responseMono = userService.createUser(request);
 
+        UserResponseDTO response = responseMono.block();
         assertNotNull(response);
         assertEquals("1", response.userId());
         assertEquals("12345678901", response.userCPF());
@@ -46,16 +48,13 @@ class UserServiceTest {
     @Test
     void testCreateUser_ThrowsUserAlreadyExistsException() {
         UserRequestDTO request = new UserRequestDTO("Jane Doe", "98765432100");
-        User user = new User();
-        user.setUserId("2");
-        user.setUserName("Jane Doe");
-        user.setUserCPF("98765432100");
 
-        when(userRepository.save(any(User.class))).thenReturn(user);
-        when(userRepository.existsByuserCPF("98765432100")).thenReturn(true);
+        when(userRepository.existsByuserCPF("98765432100")).thenReturn(Mono.just(true));
 
-        assertThrows(UserAlreadyExistsException.class, () -> userService.createUser(request));
-        verify(userRepository).save(any(User.class));
+        Mono<UserResponseDTO> responseMono = userService.createUser(request);
+
+        assertThrows(UserAlreadyExistsException.class, responseMono::block);
+        verify(userRepository, never()).save(any(User.class));
         verify(userRepository).existsByuserCPF("98765432100");
     }
 }
