@@ -7,6 +7,8 @@ import br.com.hahn.votacao.domain.exception.VotingExpiredException;
 import br.com.hahn.votacao.domain.exception.VotingNotFoundException;
 import br.com.hahn.votacao.domain.model.Voting;
 import br.com.hahn.votacao.domain.repository.VotingRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -17,6 +19,8 @@ import java.time.Instant;
 
 @Service
 public class VotingService {
+
+    private static final Logger votingServiceLogger = LoggerFactory.getLogger(VotingService.class);
 
     private final VotingRepository votingRepository;
 
@@ -30,6 +34,7 @@ public class VotingService {
     private static final String VOTING_CONTEXT = "/vote/";
 
     public Mono<VotingResponseDTO> createVoting(VotingRequestDTO votingRequestDTO) {
+        votingServiceLogger.info("Criando uma nova votação");
         Voting voting = convertToCollection(votingRequestDTO);
         return votingRepository.save(voting)
                 .map(savedVoting -> {
@@ -47,6 +52,7 @@ public class VotingService {
     }
 
     public Mono<Void> validateExpireVotingTime(String votingId) {
+        votingServiceLogger.info("Validando se a votação ainda esta ativa");
         return votingRepository.findById(votingId)
                 .switchIfEmpty(Mono.error(new VotingNotFoundException("Voting not found for this " + votingId)))
                 .flatMap(voting -> {
@@ -71,6 +77,7 @@ public class VotingService {
     }
 
     private Instant createExpirationDate(Instant openVotingDate, String userDefinedExpirationDate) {
+        votingServiceLogger.info("Criando data de expiração para a votação");
         final long defaultMinutes = 1L;
         long minutes = defaultMinutes;
 

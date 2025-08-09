@@ -18,7 +18,7 @@ import java.time.Duration;
 @Service
 public class VoteService {
 
-    private static final Logger logger = LoggerFactory.getLogger(VoteService.class);
+    private static final Logger voteServiceLogger = LoggerFactory.getLogger(VoteService.class);
 
     private final KafkaTemplate<String, VoteRequestDTO> kafkaTemplate;
     private final VoteRepository voteRepository;
@@ -33,11 +33,12 @@ public class VoteService {
     }
 
     public Mono<Void> sendVoteToQueue(VoteRequestDTO voteRequestDTO) {
+        voteServiceLogger.info("Inciando envio de votos para a fila");
         String key = voteRequestDTO.votingId() + ":" + voteRequestDTO.userId();
         return hasUserAlreadyVoted(voteRequestDTO.votingId(), voteRequestDTO.userId())
                 .flatMap(alreadyVoted -> {
                     if (Boolean.TRUE.equals(alreadyVoted)) {
-                        logger.warn("Usuário já votou, esta salvo no banco!");
+                        voteServiceLogger.warn("Usuário já votou, esta salvo no banco!");
                         return Mono.error(new UserAlreadyVoteException("User has already voted"));
                     }
                     return redisTemplate.opsForValue()
@@ -48,13 +49,14 @@ public class VoteService {
                                             .then(Mono.fromRunnable(() -> kafkaTemplate.send("vote-topic", voteRequestDTO)))
                                             .then();
                                 }
-                                logger.error("Lançado a exceção para usuário que já votou");
+                                voteServiceLogger.info("Lançado a exceção para usuário que já votou");
                                 return Mono.error(new UserAlreadyVoteException("User has already voted (pending in batch)"));
                             });
                 });
     }
 
     public Mono<Boolean> hasUserAlreadyVoted(String votingId, String userId) {
+        voteServiceLogger.info("Verificando se o usuário já votou");
         return voteRepository.findByVotingIdAndUserId(votingId, userId)
                 .hasElement();
     }
