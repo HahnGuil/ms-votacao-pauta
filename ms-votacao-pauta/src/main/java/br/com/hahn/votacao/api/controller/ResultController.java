@@ -17,17 +17,13 @@ public class ResultController {
     }
 
     @GetMapping("/{votingId}")
-    public Mono<ResponseEntity<ResultResponseDTO>> getResult(@PathVariable String votingId) {
-        return resultService.getResult(votingId)
-                .map(ResponseEntity::ok)
-                .onErrorReturn(ResponseEntity.notFound().build());
+    public Mono<ResultResponseDTO> getResult(@PathVariable String votingId) {
+        return resultService.getResult(votingId);
     }
 
     @GetMapping("/{votingId}/exists")
     public Mono<ResponseEntity<Boolean>> resultExists(@PathVariable String votingId) {
-        return resultService.getResult(votingId)
-                .map(result -> ResponseEntity.ok(true))
-                .onErrorReturn(ResponseEntity.ok(false));
+        return resultService.isResultAvailable(votingId).map(ResponseEntity::ok);
     }
 
 

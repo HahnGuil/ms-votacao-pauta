@@ -5,6 +5,8 @@ import br.com.hahn.votacao.domain.dto.ResultCreateDTO;
 import br.com.hahn.votacao.domain.dto.response.ResultResponseDTO;
 import br.com.hahn.votacao.domain.enums.VoteOption;
 import br.com.hahn.votacao.domain.enums.VotingResult;
+import br.com.hahn.votacao.domain.exception.ResultNotReadyException;
+import br.com.hahn.votacao.domain.exception.VotingNotFoundException;
 import br.com.hahn.votacao.domain.model.Result;
 import br.com.hahn.votacao.domain.model.Vote;
 import br.com.hahn.votacao.domain.model.Voting;
@@ -34,14 +36,36 @@ public class ResultService {
     public Mono<ResultResponseDTO> createResult(String votingId) {
         resultServiceLogger.info("Iniciando cálculo do resultado para votingId: {}", votingId);
 
-        Mono<Voting> votingMono = votingService.findById(votingId);
+        // Primeiro verifica se a votação existe
+        return votingService.findById(votingId)
+                .switchIfEmpty(Mono.error(new VotingNotFoundException("Voting not found with ID: " + votingId)))
+                .flatMap(voting -> {
+                    // Verifica se a votação já foi encerrada
+                    if (voting.isVotingSatus()) {
+                        return Mono.error(new ResultNotReadyException(
+                                "Result not ready yet. Voting is still active and will close at: " + voting.getCloseVotingDate()
+                        ));
+                    }
+
+                    // Verifica se já existe um resultado
+                    return resultRepository.findById(votingId)
+                            .flatMap(existingResult -> {
+                                resultServiceLogger.info("Resultado já existe para votingId: {}", votingId);
+                                return Mono.just(new ResultResponseDTO(
+                                        existingResult.getVotingId(),
+                                        existingResult.getVotingSubject(),
+                                        existingResult.getTotalVotes(),
+                                        existingResult.getVotingResult().toString()
+                                ));
+                            })
+                            .switchIfEmpty(calculateAndSaveResult(votingId, voting));
+                });
+    }
+
+    private Mono<ResultResponseDTO> calculateAndSaveResult(String votingId, Voting voting) {
         Mono<List<Vote>> votesMono = voteService.findByVotingId(votingId).collectList();
 
-        return Mono.zip(votingMono, votesMono)
-                .flatMap(tuple -> {
-                    Voting voting = tuple.getT1();
-                    List<Vote> votesList = tuple.getT2();
-
+        return votesMono.flatMap(votesList -> {
                     String votingSubject = voting.getSubject();
                     Integer totalVotes = votesList.size();
                     VotingResult resultVoting = calculateVotingResult(votesList);
@@ -69,21 +93,47 @@ public class ResultService {
     public Mono<ResultResponseDTO> getResult(String votingId) {
         resultServiceLogger.info("Buscando resultado para votingId: {}", votingId);
 
-        return resultRepository.findById(votingId) // ← Agora funciona porque votingId é o @Id
+        return resultRepository.findById(votingId)
                 .map(result -> new ResultResponseDTO(
                         result.getVotingId(),
                         result.getVotingSubject(),
                         result.getTotalVotes(),
                         result.getVotingResult().toString()
                 ))
-                .switchIfEmpty(Mono.error(new RuntimeException("Result not found for voting: " + votingId)))
+                .switchIfEmpty(checkVotingStatusAndThrowAppropriateException(votingId))
                 .doOnSuccess(result -> resultServiceLogger.info("Resultado encontrado para votingId: {}", votingId))
-                .doOnError(error -> resultServiceLogger.warn("Resultado não encontrado para votingId: {}", votingId));
+                .doOnError(error -> resultServiceLogger.debug("Problema ao buscar resultado para votingId: {}", votingId));
+    }
+
+    private Mono<ResultResponseDTO> checkVotingStatusAndThrowAppropriateException(String votingId) {
+        return votingService.findById(votingId)
+                .<ResultResponseDTO>flatMap(voting -> {
+                    if (voting.isVotingSatus()) {
+                        // Votação ainda está ativa
+                        return Mono.error(new ResultNotReadyException(
+                                "Result not ready yet. Voting is still active and will close at: " + voting.getCloseVotingDate()
+                        ));
+                    } else {
+                        // Votação foi encerrada mas resultado não foi calculado ainda
+                        return Mono.error(new ResultNotReadyException(
+                                "Result is being processed. Voting ended at: " + voting.getCloseVotingDate() +
+                                        ". Please try again in a few moments."
+                        ));
+                    }
+                })
+                .switchIfEmpty(Mono.error(new VotingNotFoundException("Voting not found with ID: " + votingId)));
+    }
+
+    public Mono<Boolean> isResultAvailable(String votingId) {
+        return resultRepository.findById(votingId)
+                .map(result -> true)
+                .defaultIfEmpty(false)
+                .doOnNext(exists -> resultServiceLogger.debug("Resultado disponível para votingId {}: {}", votingId, exists));
     }
 
     private Result convertToResult(ResultCreateDTO resultCreateDTO) {
         Result result = new Result();
-        result.setVotingId(resultCreateDTO.votingId()); // ← Agora é o @Id
+        result.setVotingId(resultCreateDTO.votingId());
         result.setVotingSubject(resultCreateDTO.votingSubject());
         result.setTotalVotes(resultCreateDTO.totalVotes());
         result.setVotingResult(resultCreateDTO.votingResult());
@@ -91,6 +141,11 @@ public class ResultService {
     }
 
     private VotingResult calculateVotingResult(List<Vote> votes) {
+        if (votes.isEmpty()) {
+            resultServiceLogger.info("Nenhum voto encontrado, resultado padrão: REPROVADO");
+            return VotingResult.REPROVADO;
+        }
+
         long simCount = votes.stream()
                 .filter(vote -> vote.getVoteOption() == VoteOption.SIM)
                 .count();
