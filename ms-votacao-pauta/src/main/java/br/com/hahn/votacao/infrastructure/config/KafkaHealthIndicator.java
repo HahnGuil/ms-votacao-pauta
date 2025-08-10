@@ -22,7 +22,7 @@ public class KafkaHealthIndicator implements ReactiveHealthIndicator {
                         .build());
     }
 
-    private Health buildHealthFromStatus(Boolean isHealthy) {
+    public Health buildHealthFromStatus(Boolean isHealthy) {
         if (Boolean.TRUE.equals(isHealthy)) {
             return Health.up()
                     .withDetail(KAFKA_DETAIL_KEY, KAFKA_AVAILABLE)
@@ -34,7 +34,7 @@ public class KafkaHealthIndicator implements ReactiveHealthIndicator {
         }
     }
 
-    private Mono<Boolean> checkKafkaHealth() {
+    public Mono<Boolean> checkKafkaHealth() {
         return Mono.just(Boolean.TRUE);
     }
 }

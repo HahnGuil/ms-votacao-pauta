@@ -131,7 +131,7 @@ public class ResultService {
                 .doOnNext(exists -> resultServiceLogger.debug("Resultado disponível para votingId {}: {}", votingId, exists));
     }
 
-    private Result convertToResult(ResultCreateDTO resultCreateDTO) {
+    Result convertToResult(ResultCreateDTO resultCreateDTO) {
         Result result = new Result();
         result.setVotingId(resultCreateDTO.votingId());
         result.setVotingSubject(resultCreateDTO.votingSubject());
@@ -140,7 +140,7 @@ public class ResultService {
         return result;
     }
 
-    private VotingResult calculateVotingResult(List<Vote> votes) {
+    VotingResult calculateVotingResult(List<Vote> votes) {
         if (votes.isEmpty()) {
             resultServiceLogger.info("Nenhum voto encontrado, resultado padrão: REPROVADO");
             return VotingResult.REPROVADO;
