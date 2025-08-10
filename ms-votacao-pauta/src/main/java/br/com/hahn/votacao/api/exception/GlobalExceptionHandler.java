@@ -42,4 +42,22 @@ public class GlobalExceptionHandler {
         ErrorResponseDTO error = new ErrorResponseDTO(ex.getMessage(), Instant.now());
         return Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).body(error));
     }
+
+    @ExceptionHandler(ResultNotFoundException.class)
+    public Mono<ResponseEntity<ErrorResponseDTO>> handleResultNotFoundException(ResultNotFoundException ex){
+        ErrorResponseDTO error = new ErrorResponseDTO(ex.getMessage(), Instant.now());
+        return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).body(error));
+    }
+
+    @ExceptionHandler(ResultNotReadyException.class)
+    public Mono<ResponseEntity<ErrorResponseDTO>> handleResultNotReadyException(ResultNotReadyException ex){
+        ErrorResponseDTO error = new ErrorResponseDTO(ex.getMessage(), Instant.now());
+        return Mono.just(ResponseEntity.status(HttpStatus.ACCEPTED).body(error));
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public Mono<ResponseEntity<ErrorResponseDTO>> handleGenericRuntimeException(RuntimeException ex){
+        ErrorResponseDTO error = new ErrorResponseDTO("Internal server error: " + ex.getMessage(), Instant.now());
+        return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error));
+    }
 }
