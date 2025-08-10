@@ -84,4 +84,39 @@ class UserServiceTest {
         assertEquals("Alice", user.getUserName());
         assertEquals("11122233344", user.getUserCPF());
     }
+
+    @Test
+    void findById_shouldReturnUser_whenUserExists() {
+        User user = new User();
+        user.setUserId("userId");
+        user.setUserName("Test User");
+        user.setUserCPF("12345678901");
+
+        when(userRepository.findById("userId")).thenReturn(Mono.just(user));
+
+        Mono<User> result = userService.findById("userId");
+
+        StepVerifier.create(result)
+                .assertNext(foundUser -> {
+                    assertEquals("userId", foundUser.getUserId());
+                    assertEquals("Test User", foundUser.getUserName());
+                    assertEquals("12345678901", foundUser.getUserCPF());
+                })
+                .verifyComplete();
+
+        verify(userRepository).findById("userId");
+    }
+
+    @Test
+    void findById_shouldReturnEmpty_whenUserDoesNotExist() {
+        when(userRepository.findById("userId")).thenReturn(Mono.empty());
+
+        Mono<User> result = userService.findById("userId");
+
+        StepVerifier.create(result)
+                .expectNextCount(0)
+                .verifyComplete();
+
+        verify(userRepository).findById("userId");
+    }
 }
