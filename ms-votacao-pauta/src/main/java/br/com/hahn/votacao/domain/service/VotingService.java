@@ -58,14 +58,24 @@ public class VotingService {
     }
 
     public Mono<Void> validateExpireVotingTime(String votingId) {
-        votingServiceLogger.info("Validando se a votação ainda esta ativa");
+        votingServiceLogger.info("Validando se a votação ainda está ativa");
         return votingRepository.findById(votingId)
                 .switchIfEmpty(Mono.error(new VotingNotFoundException("Voting not found for this " + votingId)))
                 .flatMap(voting -> {
+                    // Primeiro verifica se a votação está ativa
+                    if (!voting.isVotingSatus()) {
+                        votingServiceLogger.warn("Votação está inativa: {}", votingId);
+                        return Mono.error(new VotingExpiredException("This voting is inactive and no longer accepts votes."));
+                    }
+
+                    // Depois verifica se a votação não expirou por tempo
                     Instant now = Instant.now();
                     if (now.isAfter(voting.getCloseVotingDate())) {
+                        votingServiceLogger.warn("Votação expirou por tempo: {}", votingId);
                         return Mono.error(new VotingExpiredException("This voting has expired, you can no longer vote."));
                     }
+
+                    votingServiceLogger.info("Votação válida e ativa: {}", votingId);
                     return Mono.empty();
                 });
     }

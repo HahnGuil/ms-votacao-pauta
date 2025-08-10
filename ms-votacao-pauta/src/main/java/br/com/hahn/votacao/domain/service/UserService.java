@@ -37,6 +37,10 @@ public class UserService {
                 });
     }
 
+    public Mono<User> findById(String userId) {
+        return userRepository.findById(userId);
+    }
+
     private User convertToCollection(UserRequestDTO userRequestDTO) {
         User user = new User();
         user.setUserName(userRequestDTO.userName());
