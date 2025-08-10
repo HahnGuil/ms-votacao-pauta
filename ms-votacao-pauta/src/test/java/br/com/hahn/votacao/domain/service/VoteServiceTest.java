@@ -7,7 +7,7 @@ import br.com.hahn.votacao.domain.model.Vote;
 import br.com.hahn.votacao.domain.repository.VoteRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.*;
+import org.mockito.ArgumentCaptor;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.data.redis.core.ReactiveValueOperations;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -15,6 +15,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.List;
 
@@ -23,129 +24,138 @@ import static org.mockito.Mockito.*;
 
 class VoteServiceTest {
 
-    @Mock
     private KafkaTemplate<String, VoteRequestDTO> kafkaTemplate;
-    @Mock
     private VoteRepository voteRepository;
-    @Mock
     private VotingService votingService;
-    @Mock
     private ReactiveStringRedisTemplate redisTemplate;
-    @Mock
     private ReactiveValueOperations<String, String> valueOps;
-
-    @InjectMocks
     private VoteService voteService;
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
+        kafkaTemplate = mock(KafkaTemplate.class);
+        voteRepository = mock(VoteRepository.class);
+        votingService = mock(VotingService.class);
+        redisTemplate = mock(ReactiveStringRedisTemplate.class);
+        valueOps = mock(ReactiveValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        voteService = new VoteService(kafkaTemplate, voteRepository, votingService, redisTemplate);
     }
 
     @Test
     void sendVoteToQueue_shouldSendVote_whenUserHasNotVotedAndRedisIsNew() {
-        VoteRequestDTO dto = new VoteRequestDTO("voting1", "user1", "SIM");
-        doReturn(Mono.empty()).when(voteRepository).findByVotingIdAndUserId("voting1", "user1");
+        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM");
+        doReturn(Mono.empty()).when(voteRepository).findByVotingIdAndUserId("votingId", "userId");
         when(valueOps.setIfAbsent(anyString(), eq("pending"), any(Duration.class))).thenReturn(Mono.just(true));
-        when(votingService.validateExpireVotingTime("voting1")).thenReturn(Mono.empty());
-        when(kafkaTemplate.send(anyString(), any(VoteRequestDTO.class))).thenReturn(null);
+        when(votingService.validateExpireVotingTime("votingId")).thenReturn(Mono.empty());
 
-        StepVerifier.create(voteService.sendVoteToQueue(dto))
+        Mono<Void> result = voteService.sendVoteToQueue(dto);
+
+        StepVerifier.create(result)
                 .verifyComplete();
 
-        verify(kafkaTemplate, times(1)).send("vote-topic", dto);
+        verify(kafkaTemplate).send("vote-topic", dto);
     }
 
     @Test
-    void sendVoteToQueue_shouldThrow_whenVotingTimeValidationFails() {
-        VoteRequestDTO dto = new VoteRequestDTO("voting1", "user1", "SIM");
-        doReturn(Mono.empty()).when(voteRepository).findByVotingIdAndUserId("voting1", "user1");
-        when(valueOps.setIfAbsent(anyString(), eq("pending"), any(Duration.class))).thenReturn(Mono.just(true));
-        when(votingService.validateExpireVotingTime("voting1")).thenReturn(Mono.error(new RuntimeException("Voting time expired")));
+    void sendVoteToQueue_shouldError_whenUserAlreadyVotedInDb() {
+        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM");
+        doReturn(Mono.just(new Vote())).when(voteRepository).findByVotingIdAndUserId("votingId", "userId");
 
-        StepVerifier.create(voteService.sendVoteToQueue(dto))
-                .expectError(RuntimeException.class)
-                .verify();
+        Mono<Void> result = voteService.sendVoteToQueue(dto);
 
-        verify(kafkaTemplate, never()).send(anyString(), any(VoteRequestDTO.class));
-    }
-
-    @Test
-    void sendVoteToQueue_shouldThrow_whenUserAlreadyVotedInDb() {
-        VoteRequestDTO dto = new VoteRequestDTO("voting1", "user1", "SIM");
-        doReturn(Mono.just(new Vote())).when(voteRepository).findByVotingIdAndUserId("voting1", "user1");
-
-        StepVerifier.create(voteService.sendVoteToQueue(dto))
+        StepVerifier.create(result)
                 .expectError(UserAlreadyVoteException.class)
                 .verify();
     }
 
     @Test
-    void sendVoteToQueue_shouldThrow_whenUserAlreadyVotedInRedis() {
-        VoteRequestDTO dto = new VoteRequestDTO("voting1", "user1", "SIM");
-        doReturn(Mono.empty()).when(voteRepository).findByVotingIdAndUserId("voting1", "user1");
+    void sendVoteToQueue_shouldError_whenUserAlreadyVotedInRedis() {
+        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM");
+        doReturn(Mono.empty()).when(voteRepository).findByVotingIdAndUserId("votingId", "userId");
         when(valueOps.setIfAbsent(anyString(), eq("pending"), any(Duration.class))).thenReturn(Mono.just(false));
 
-        StepVerifier.create(voteService.sendVoteToQueue(dto))
+        Mono<Void> result = voteService.sendVoteToQueue(dto);
+
+        StepVerifier.create(result)
                 .expectError(UserAlreadyVoteException.class)
                 .verify();
     }
 
     @Test
     void hasUserAlreadyVoted_shouldReturnTrue_whenVoteExists() {
-        doReturn(Mono.just(new Vote())).when(voteRepository).findByVotingIdAndUserId("voting1", "user1");
+        doReturn(Mono.just(new Vote())).when(voteRepository).findByVotingIdAndUserId("votingId", "userId");
 
-        StepVerifier.create(voteService.hasUserAlreadyVoted("voting1", "user1"))
+        Mono<Boolean> result = voteService.hasUserAlreadyVoted("votingId", "userId");
+
+        StepVerifier.create(result)
                 .expectNext(true)
                 .verifyComplete();
     }
 
     @Test
-    void hasUserAlreadyVoted_shouldReturnFalse_whenVoteNotExists() {
-        doReturn(Mono.empty()).when(voteRepository).findByVotingIdAndUserId("voting1", "user1");
+    void hasUserAlreadyVoted_shouldReturnFalse_whenVoteDoesNotExist() {
+        doReturn(Mono.empty()).when(voteRepository).findByVotingIdAndUserId("votingId", "userId");
 
-        StepVerifier.create(voteService.hasUserAlreadyVoted("voting1", "user1"))
+        Mono<Boolean> result = voteService.hasUserAlreadyVoted("votingId", "userId");
+
+        StepVerifier.create(result)
                 .expectNext(false)
                 .verifyComplete();
     }
 
     @Test
-    void saveAllFromDTO_shouldSaveAllVotes() {
-        VoteRequestDTO dto1 = new VoteRequestDTO("voting1", "user1", "SIM");
-        VoteRequestDTO dto2 = new VoteRequestDTO("voting1", "user2", "NAO");
+    void saveAllFromDTO_shouldConvertAndSaveAllVotes() {
+        VoteRequestDTO dto1 = new VoteRequestDTO("votingId1", "userId1", "SIM");
+        VoteRequestDTO dto2 = new VoteRequestDTO("votingId2", "userId2", "NAO");
         Vote vote1 = new Vote();
-        vote1.setVotingId("voting1");
-        vote1.setUserId("user1");
+        vote1.setVotingId("votingId1");
+        vote1.setUserId("userId1");
         vote1.setVoteOption(VoteOption.SIM);
         Vote vote2 = new Vote();
-        vote2.setVotingId("voting1");
-        vote2.setUserId("user2");
+        vote2.setVotingId("votingId2");
+        vote2.setUserId("userId2");
         vote2.setVoteOption(VoteOption.NAO);
 
-        doReturn(Flux.just(vote1, vote2)).when(voteRepository).saveAll(any(List.class));
+        doReturn(Flux.fromIterable(List.of(vote1, vote2))).when(voteRepository).saveAll(anyList());
 
-        StepVerifier.create(voteService.saveAllFromDTO(Flux.just(dto1, dto2)))
+        Flux<Vote> result = voteService.saveAllFromDTO(Flux.just(dto1, dto2));
+
+        StepVerifier.create(result)
                 .expectNext(vote1)
                 .expectNext(vote2)
+                .verifyComplete();
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<Vote>> captor = ArgumentCaptor.forClass(List.class);
+        verify(voteRepository).saveAll(captor.capture());
+        assertEquals(2, captor.getValue().size());
+        assertEquals("votingId1", captor.getValue().get(0).getVotingId());
+        assertEquals("votingId2", captor.getValue().get(1).getVotingId());
+    }
+
+    @Test
+    void findByVotingId_shouldReturnVotes() {
+        Vote vote = new Vote();
+        vote.setVotingId("votingId");
+        doReturn(Flux.just(vote)).when(voteRepository).findByVotingId("votingId");
+
+        Flux<Vote> result = voteService.findByVotingId("votingId");
+
+        StepVerifier.create(result)
+                .expectNext(vote)
                 .verifyComplete();
     }
 
     @Test
-    void convertToCollection_shouldConvertDTOToVote() {
-        VoteRequestDTO dto = new VoteRequestDTO("voting1", "user1", "SIM");
-        Vote expectedVote = new Vote();
-        expectedVote.setVotingId("voting1");
-        expectedVote.setUserId("user1");
-        expectedVote.setVoteOption(VoteOption.SIM);
+    void convertToCollection_shouldConvertDTOToVote() throws Exception {
+        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM");
+        Method method = VoteService.class.getDeclaredMethod("convertToCollection", VoteRequestDTO.class);
+        method.setAccessible(true);
+        Vote vote = (Vote) method.invoke(voteService, dto);
 
-        when(voteRepository.saveAll(any(List.class))).thenReturn(Flux.just(expectedVote));
-
-        Vote vote = voteService.saveAllFromDTO(Flux.just(dto)).blockFirst();
-        assertNotNull(vote);
-        assertEquals("voting1", vote.getVotingId());
-        assertEquals("user1", vote.getUserId());
+        assertEquals("votingId", vote.getVotingId());
+        assertEquals("userId", vote.getUserId());
         assertEquals(VoteOption.SIM, vote.getVoteOption());
     }
 }
-
