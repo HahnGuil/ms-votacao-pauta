@@ -47,6 +47,10 @@ public class VotingService {
         return votingRepository.findAll();
     }
 
+    public Mono<Voting> findById(String votingId) {
+        return votingRepository.findById(votingId);
+    }
+
     public Mono<Voting> saveVoting(Voting voting) {
         return votingRepository.save(voting);
     }
