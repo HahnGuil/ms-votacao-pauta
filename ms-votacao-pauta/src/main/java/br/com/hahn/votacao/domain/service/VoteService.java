@@ -68,6 +68,13 @@ public class VoteService {
                 .flatMapMany(voteRepository::saveAll);
     }
 
+    public Flux<Vote> findByVotingId(String votingId) {
+        voteServiceLogger.info("Buscando todos os votos para a votação: {}", votingId);
+        return voteRepository.findByVotingId(votingId);
+    }
+
+
+
     private Vote convertToCollection(VoteRequestDTO voteRequestDTO) {
         Vote vote = new Vote();
         vote.setVotingId(voteRequestDTO.votingId());
