@@ -49,6 +49,18 @@ public class GlobalExceptionHandler {
         return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).body(error));
     }
 
+    @ExceptionHandler(InvalidCpfException.class)
+    public Mono<ResponseEntity<ErrorResponseDTO>> handleInvalidCpfException(InvalidCpfException ex){
+        ErrorResponseDTO error = new ErrorResponseDTO(ex.getMessage(), Instant.now());
+        return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).body(error));
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public Mono<ResponseEntity<ErrorResponseDTO>> handleUserNotFoundException(UserNotFoundException ex){
+        ErrorResponseDTO error = new ErrorResponseDTO(ex.getMessage(), Instant.now());
+        return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).body(error));
+    }
+
     @ExceptionHandler(ResultNotReadyException.class)
     public Mono<ResponseEntity<ErrorResponseDTO>> handleResultNotReadyException(ResultNotReadyException ex){
         ErrorResponseDTO error = new ErrorResponseDTO(ex.getMessage(), Instant.now());
@@ -60,4 +72,6 @@ public class GlobalExceptionHandler {
         ErrorResponseDTO error = new ErrorResponseDTO("Internal server error: " + ex.getMessage(), Instant.now());
         return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error));
     }
+
+
 }
