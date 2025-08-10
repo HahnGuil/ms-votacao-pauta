@@ -8,5 +8,5 @@ import reactor.core.publisher.Mono;
 @Repository
 public interface UserRepository extends ReactiveMongoRepository<User, String> {
 
-    Mono<Boolean> existsByuserCPF(String userCPF);
+    Mono<Boolean> existsUserByuserCPF(String userCPF);
 }

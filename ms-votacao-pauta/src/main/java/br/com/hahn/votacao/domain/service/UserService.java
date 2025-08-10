@@ -26,7 +26,7 @@ public class UserService {
         userServiceLogger.info("Criando um novo usuário");
 
         User user = convertToCollection(userRequestDTO);
-        return userRepository.existsByuserCPF(userRequestDTO.userCPF())
+        return userRepository.existsUserByuserCPF(userRequestDTO.userCPF())
                 .flatMap(exists -> {
                     if (Boolean.TRUE.equals(exists)) {
                         userServiceLogger.info("Usuário já existe, exceção sendo lançada");
