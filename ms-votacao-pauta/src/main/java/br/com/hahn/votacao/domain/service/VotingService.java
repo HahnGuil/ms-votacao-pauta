@@ -108,7 +108,7 @@ public class VotingService {
                 if (minutes <= 0) {
                     minutes = defaultMinutes;
                 }
-            } catch (NumberFormatException _) {
+            }catch (NumberFormatException e) {
                 throw new InvalidFormatExpirationDate("Invalid time format, poll timeout set to 1 minute.");
             }
         }

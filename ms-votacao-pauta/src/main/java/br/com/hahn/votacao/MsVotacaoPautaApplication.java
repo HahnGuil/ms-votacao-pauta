@@ -191,7 +191,7 @@ public class MsVotacaoPautaApplication {
         private boolean isMongoConnected(ApplicationReadyEvent event) {
             try {
                 return !event.getApplicationContext().getBeansOfType(org.springframework.data.mongodb.core.ReactiveMongoTemplate.class).isEmpty();
-            } catch (Exception _) {
+            } catch (Exception e) {
                 return false;
             }
         }
