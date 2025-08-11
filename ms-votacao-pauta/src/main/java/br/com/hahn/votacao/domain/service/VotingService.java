@@ -31,6 +31,11 @@ public class VotingService {
     @Value("${server.port}")
     private String serverPort;
 
+    @Value("${spring.webflux.base-path}")
+    private String apiContext;
+
+
+
     private static final String VOTING_CONTEXT = "/vote";
     private static final String RESULT_CONTEXT = "/result";
 
@@ -39,8 +44,8 @@ public class VotingService {
         Voting voting = convertToCollection(votingRequestDTO);
         return votingRepository.save(voting)
                 .map(savedVoting -> {
-                    String voteUrl = "http://localhost:" + serverPort + VOTING_CONTEXT + "/" + savedVoting.getVotingId();
-                    String resultUrl = "http://localhost:" + serverPort + RESULT_CONTEXT + "/" + savedVoting.getVotingId();
+                    String voteUrl = "http://localhost:" + serverPort + apiContext + "/"  + votingRequestDTO.apiVersion() +  VOTING_CONTEXT + "/" + savedVoting.getVotingId();
+                    String resultUrl = "http://localhost:" + serverPort + apiContext + "/" + votingRequestDTO.apiVersion() + RESULT_CONTEXT + "/" + savedVoting.getVotingId();
                     return new VotingResponseDTO(savedVoting.getVotingId(), voteUrl, savedVoting.getCloseVotingDate(), resultUrl);
                 });
     }
