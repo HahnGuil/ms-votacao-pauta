@@ -27,7 +27,7 @@ class VoteBatchConsumerTest {
 
     @Test
     void receiveVote_shouldAddVoteToBatch_whenNotDuplicate() {
-        VoteRequestDTO vote = new VoteRequestDTO("votingId", "userId", "SIM");
+        VoteRequestDTO vote = new VoteRequestDTO("votingId", "userId", "SIM", "v1");
         consumer.receiveVote(vote);
         // Adiciona novamente para garantir que duplicados são ignorados
         consumer.receiveVote(vote);
@@ -54,7 +54,7 @@ class VoteBatchConsumerTest {
 
     @Test
     void scheduledFlush_shouldCallFlushBatch_whenBatchIsNotEmpty() {
-        VoteRequestDTO vote = new VoteRequestDTO("votingId", "userId", "SIM");
+        VoteRequestDTO vote = new VoteRequestDTO("votingId", "userId", "SIM", "v1");
         consumer.receiveVote(vote);
 
         Vote modelVote = new Vote();
@@ -78,9 +78,9 @@ class VoteBatchConsumerTest {
 
     @Test
     void forceFlushForVotingReactive_shouldFlushOnlyVotesForGivenVotingId() {
-        VoteRequestDTO vote1 = new VoteRequestDTO("votingId", "userId1", "SIM");
-        VoteRequestDTO vote2 = new VoteRequestDTO("votingId", "userId2", "NAO");
-        VoteRequestDTO voteOther = new VoteRequestDTO("otherVoting", "userId3", "SIM");
+        VoteRequestDTO vote1 = new VoteRequestDTO("votingId", "userId1", "SIM", "v1");
+        VoteRequestDTO vote2 = new VoteRequestDTO("votingId", "userId2", "NAO", "v1");
+        VoteRequestDTO voteOther = new VoteRequestDTO("otherVoting", "userId3", "SIM", "v1");
         consumer.receiveVote(vote1);
         consumer.receiveVote(vote2);
         consumer.receiveVote(voteOther);
@@ -106,7 +106,7 @@ class VoteBatchConsumerTest {
 
     @Test
     void forceFlushForVotingReactive_shouldReturnEmptyMono_whenNoVotesForVotingId() {
-        VoteRequestDTO vote = new VoteRequestDTO("otherVoting", "userId", "SIM");
+        VoteRequestDTO vote = new VoteRequestDTO("otherVoting", "userId", "SIM", "v1");
         consumer.receiveVote(vote);
 
         StepVerifier.create(consumer.forceFlushForVotingReactive("votingId"))

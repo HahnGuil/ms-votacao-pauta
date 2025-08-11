@@ -50,14 +50,16 @@ class VoteServiceTest {
         userService = mock(UserService.class);
         cpfValidationClient = mock(CpfValidationClient.class);
         voteService = new VoteService(kafkaTemplate, voteRepository, votingService, redisTemplate, userService, cpfValidationClient);
+
+        // Corrige o mock para sempre retornar Mono.empty()
+        when(votingService.validateExpireVotingTime(anyString())).thenReturn(Mono.empty());
     }
 
     @Test
     void sendVoteToQueue_shouldSendVote_whenUserHasNotVotedAndRedisIsNew() {
-        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM");
+        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM", "v1");
         doReturn(Mono.empty()).when(voteRepository).findByVotingIdAndUserId("votingId", "userId");
         when(valueOps.setIfAbsent(anyString(), eq("pending"), any(Duration.class))).thenReturn(Mono.just(true));
-        when(votingService.validateExpireVotingTime("votingId")).thenReturn(Mono.empty());
 
         User user = new User();
         user.setUserCPF("12345678900");
@@ -76,9 +78,8 @@ class VoteServiceTest {
 
     @Test
     void sendVoteToQueue_shouldError_whenUserAlreadyVotedInDb() {
-        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM");
+        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM", "v1");
         doReturn(Mono.just(new Vote())).when(voteRepository).findByVotingIdAndUserId("votingId", "userId");
-        when(votingService.validateExpireVotingTime("votingId")).thenReturn(Mono.empty());
 
         Mono<Void> result = voteService.sendVoteToQueue(dto);
 
@@ -89,10 +90,9 @@ class VoteServiceTest {
 
     @Test
     void sendVoteToQueue_shouldError_whenUserAlreadyVotedInRedis() {
-        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM");
+        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM", "v1");
         doReturn(Mono.empty()).when(voteRepository).findByVotingIdAndUserId("votingId", "userId");
         when(valueOps.setIfAbsent(anyString(), eq("pending"), any(Duration.class))).thenReturn(Mono.just(false));
-        when(votingService.validateExpireVotingTime("votingId")).thenReturn(Mono.empty());
 
         Mono<Void> result = voteService.sendVoteToQueue(dto);
 
@@ -125,8 +125,8 @@ class VoteServiceTest {
 
     @Test
     void saveAllFromDTO_shouldConvertAndSaveAllVotes() {
-        VoteRequestDTO dto1 = new VoteRequestDTO("votingId1", "userId1", "SIM");
-        VoteRequestDTO dto2 = new VoteRequestDTO("votingId2", "userId2", "NAO");
+        VoteRequestDTO dto1 = new VoteRequestDTO("votingId1", "userId1", "SIM", "v1");
+        VoteRequestDTO dto2 = new VoteRequestDTO("votingId2", "userId2", "NAO", "v1");
         Vote vote1 = new Vote();
         vote1.setVotingId("votingId1");
         vote1.setUserId("userId1");
@@ -168,7 +168,7 @@ class VoteServiceTest {
 
     @Test
     void convertToCollection_shouldConvertDTOToVote() throws Exception {
-        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM");
+        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM", "v1");
         Method method = VoteService.class.getDeclaredMethod("convertToCollection", VoteRequestDTO.class);
         method.setAccessible(true);
         Vote vote = (Vote) method.invoke(voteService, dto);
@@ -180,10 +180,9 @@ class VoteServiceTest {
 
     @Test
     void sendVoteToQueue_shouldError_whenUserNotFound() {
-        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM");
+        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM", "v1");
         doReturn(Mono.empty()).when(voteRepository).findByVotingIdAndUserId("votingId", "userId");
         when(valueOps.setIfAbsent(anyString(), eq("pending"), any(Duration.class))).thenReturn(Mono.just(true));
-        when(votingService.validateExpireVotingTime("votingId")).thenReturn(Mono.empty());
         when(userService.findById("userId")).thenReturn(Mono.empty());
 
         Mono<Void> result = voteService.sendVoteToQueue(dto);
@@ -195,10 +194,9 @@ class VoteServiceTest {
 
     @Test
     void sendVoteToQueue_shouldError_whenUserCpfIsEmpty() {
-        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM");
+        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM", "v1");
         doReturn(Mono.empty()).when(voteRepository).findByVotingIdAndUserId("votingId", "userId");
         when(valueOps.setIfAbsent(anyString(), eq("pending"), any(Duration.class))).thenReturn(Mono.just(true));
-        when(votingService.validateExpireVotingTime("votingId")).thenReturn(Mono.empty());
         User user = new User();
         user.setUserCPF("");
         when(userService.findById("userId")).thenReturn(Mono.just(user));
@@ -212,10 +210,9 @@ class VoteServiceTest {
 
     @Test
     void sendVoteToQueue_shouldError_whenUserCpfIsNull() {
-        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM");
+        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM", "v1");
         doReturn(Mono.empty()).when(voteRepository).findByVotingIdAndUserId("votingId", "userId");
         when(valueOps.setIfAbsent(anyString(), eq("pending"), any(Duration.class))).thenReturn(Mono.just(true));
-        when(votingService.validateExpireVotingTime("votingId")).thenReturn(Mono.empty());
         User user = new User();
         user.setUserCPF(null);
         when(userService.findById("userId")).thenReturn(Mono.just(user));
@@ -229,10 +226,9 @@ class VoteServiceTest {
 
     @Test
     void sendVoteToQueue_shouldError_whenCpfUnableToVote() {
-        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM");
+        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM", "v1");
         doReturn(Mono.empty()).when(voteRepository).findByVotingIdAndUserId("votingId", "userId");
         when(valueOps.setIfAbsent(anyString(), eq("pending"), any(Duration.class))).thenReturn(Mono.just(true));
-        when(votingService.validateExpireVotingTime("votingId")).thenReturn(Mono.empty());
         User user = new User();
         user.setUserCPF("12345678900");
         when(userService.findById("userId")).thenReturn(Mono.just(user));
@@ -248,14 +244,13 @@ class VoteServiceTest {
 
     @Test
     void sendVoteToQueue_shouldComplete_whenCpfAbleToVote() {
-        VoteRequestDTO dto = new VoteRequestDTO("votingId2", "userId2", "NAO");
-        doReturn(Mono.empty()).when(voteRepository).findByVotingIdAndUserId("votingId2", "userId2");
+        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM", "v1");
+        doReturn(Mono.empty()).when(voteRepository).findByVotingIdAndUserId("votingId", "userId");
         when(valueOps.setIfAbsent(anyString(), eq("pending"), any(Duration.class))).thenReturn(Mono.just(true));
-        when(votingService.validateExpireVotingTime("votingId2")).thenReturn(Mono.empty());
 
         User user = new User();
         user.setUserCPF("98765432100");
-        when(userService.findById("userId2")).thenReturn(Mono.just(user));
+        when(userService.findById("userId")).thenReturn(Mono.just(user));
         CpfValidationResponseDTO response = new CpfValidationResponseDTO(CpfStatus.ABLE_TO_VOTE);
         when(cpfValidationClient.validateCpf("98765432100")).thenReturn(Mono.just(response));
 

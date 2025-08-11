@@ -2,6 +2,7 @@ package br.com.hahn.votacao.domain.service;
 
 
 import br.com.hahn.votacao.domain.dto.ResultCreateDTO;
+import br.com.hahn.votacao.domain.dto.context.ServiceRequestContext;
 import br.com.hahn.votacao.domain.dto.response.ResultResponseDTO;
 import br.com.hahn.votacao.domain.enums.VoteOption;
 import br.com.hahn.votacao.domain.enums.VotingResult;
@@ -31,6 +32,28 @@ public class ResultService {
         this.resultRepository = resultRepository;
         this.voteService = voteService;
         this.votingService = votingService;
+    }
+
+    public Mono<ResultResponseDTO> getResult(ServiceRequestContext requestContext) {
+        resultServiceLogger.info("Buscando resultado para votingId: {}", requestContext.resourceId());
+
+        return resultRepository.findById(requestContext.resourceId())
+                .map(result -> new ResultResponseDTO(
+                        result.getVotingId(),
+                        result.getVotingSubject(),
+                        result.getTotalVotes(),
+                        result.getVotingResult().toString()
+                ))
+                .switchIfEmpty(checkVotingStatusAndThrowAppropriateException(requestContext.resourceId()))
+                .doOnSuccess(result -> resultServiceLogger.info("Resultado encontrado para votingId: {}", requestContext.resourceId()))
+                .doOnError(error -> resultServiceLogger.debug("Problema ao buscar resultado para votingId: {}", requestContext.resourceId()));
+    }
+
+    public Mono<Boolean> isResultAvailable(ServiceRequestContext requestContext) {
+        return resultRepository.findById(requestContext.resourceId())
+                .map(result -> true)
+                .defaultIfEmpty(false)
+                .doOnNext(exists -> resultServiceLogger.debug("Resultado disponível para votingId {}: {}", requestContext.resourceId(), exists));
     }
 
     public Mono<ResultResponseDTO> createResult(String votingId) {
@@ -90,21 +113,6 @@ public class ResultService {
                 .doOnError(error -> resultServiceLogger.error("Erro ao calcular resultado para votingId: {}", votingId, error));
     }
 
-    public Mono<ResultResponseDTO> getResult(String votingId) {
-        resultServiceLogger.info("Buscando resultado para votingId: {}", votingId);
-
-        return resultRepository.findById(votingId)
-                .map(result -> new ResultResponseDTO(
-                        result.getVotingId(),
-                        result.getVotingSubject(),
-                        result.getTotalVotes(),
-                        result.getVotingResult().toString()
-                ))
-                .switchIfEmpty(checkVotingStatusAndThrowAppropriateException(votingId))
-                .doOnSuccess(result -> resultServiceLogger.info("Resultado encontrado para votingId: {}", votingId))
-                .doOnError(error -> resultServiceLogger.debug("Problema ao buscar resultado para votingId: {}", votingId));
-    }
-
     private Mono<ResultResponseDTO> checkVotingStatusAndThrowAppropriateException(String votingId) {
         return votingService.findById(votingId)
                 .<ResultResponseDTO>flatMap(voting -> {
@@ -124,12 +132,6 @@ public class ResultService {
                 .switchIfEmpty(Mono.error(new VotingNotFoundException("Voting not found with ID: " + votingId)));
     }
 
-    public Mono<Boolean> isResultAvailable(String votingId) {
-        return resultRepository.findById(votingId)
-                .map(result -> true)
-                .defaultIfEmpty(false)
-                .doOnNext(exists -> resultServiceLogger.debug("Resultado disponível para votingId {}: {}", votingId, exists));
-    }
 
     Result convertToResult(ResultCreateDTO resultCreateDTO) {
         Result result = new Result();

@@ -35,7 +35,7 @@ class VotingServiceTest {
 
     @Test
     void createVoting_shouldSaveAndReturnResponse() {
-        VotingRequestDTO dto = new VotingRequestDTO("subject", "5");
+        VotingRequestDTO dto = new VotingRequestDTO("subject", "5", "v1");
         Voting voting = new Voting();
         voting.setVotingId("id123");
         voting.setSubject("subject");
@@ -57,7 +57,7 @@ class VotingServiceTest {
 
     @Test
     void testCreateVoting_Success() {
-        VotingRequestDTO request = new VotingRequestDTO("Assunto Teste", "5");
+        VotingRequestDTO request = new VotingRequestDTO("Assunto Teste", "5", "v1");
         Voting voting = new Voting();
         voting.setVotingId("abc123");
         voting.setSubject("Assunto Teste");
@@ -82,7 +82,7 @@ class VotingServiceTest {
 
     @Test
     void testCreateVoting_InvalidExpirationDate_ThrowsException() {
-        VotingRequestDTO request = new VotingRequestDTO("Assunto Teste", "invalid");
+        VotingRequestDTO request = new VotingRequestDTO("Assunto Teste", "invalid", "v1");
 
         InvalidFormatExpirationDate exception = assertThrows(InvalidFormatExpirationDate.class, () -> {
             votingService.createVoting(request);
@@ -93,7 +93,7 @@ class VotingServiceTest {
 
     @Test
     void testCreateVoting_NullExpirationDate_UsesDefault() {
-        VotingRequestDTO request = new VotingRequestDTO("Assunto Teste", null);
+        VotingRequestDTO request = new VotingRequestDTO("Assunto Teste", null, "v1");
         Voting voting = new Voting();
         voting.setVotingId("def456");
         voting.setSubject("Assunto Teste");
@@ -118,7 +118,7 @@ class VotingServiceTest {
 
     @Test
     void testCreateVoting_ZeroExpirationDate_UsesDefault() {
-        VotingRequestDTO request = new VotingRequestDTO("Assunto Teste", "0");
+        VotingRequestDTO request = new VotingRequestDTO("Assunto Teste", "0", "v1");
         Voting voting = new Voting();
         voting.setVotingId("zeroId");
         voting.setSubject("Assunto Teste");
@@ -143,7 +143,7 @@ class VotingServiceTest {
 
     @Test
     void testCreateVoting_NegativeExpirationDate_UsesDefault() {
-        VotingRequestDTO request = new VotingRequestDTO("Assunto Teste", "-10");
+        VotingRequestDTO request = new VotingRequestDTO("Assunto Teste", "-10", "v1");
         Voting voting = new Voting();
         voting.setVotingId("negId");
         voting.setSubject("Assunto Teste");
@@ -171,6 +171,7 @@ class VotingServiceTest {
         Voting voting = new Voting();
         voting.setVotingId("notExpiredId");
         voting.setCloseVotingDate(Instant.now().plusSeconds(120));
+        voting.setVotingSatus(true); // Certifica-se que está ativo
 
         when(votingRepository.findById("notExpiredId")).thenReturn(Mono.just(voting));
 
@@ -187,6 +188,7 @@ class VotingServiceTest {
         Voting voting = new Voting();
         voting.setVotingId("expiredId");
         voting.setCloseVotingDate(Instant.now().minusSeconds(10));
+        voting.setVotingSatus(false); // Certifica-se que está inativo
 
         when(votingRepository.findById("expiredId")).thenReturn(Mono.just(voting));
 
@@ -195,7 +197,7 @@ class VotingServiceTest {
         StepVerifier.create(result)
                 .expectErrorMatches(throwable ->
                         throwable instanceof VotingExpiredException &&
-                                throwable.getMessage().equals("This voting has expired, you can no longer vote.")
+                                throwable.getMessage().equals("This voting is inactive and no longer accepts votes.")
                 )
                 .verify();
 
@@ -256,7 +258,7 @@ class VotingServiceTest {
 
     @Test
     void convertToCollection_shouldConvertDTOToVoting() throws Exception {
-        VotingRequestDTO dto = new VotingRequestDTO("subject", "10");
+        VotingRequestDTO dto = new VotingRequestDTO("subject", "10", "v1");
         Method method = VotingService.class.getDeclaredMethod("convertToCollection", VotingRequestDTO.class);
         method.setAccessible(true);
         Voting voting = (Voting) method.invoke(votingService, dto);

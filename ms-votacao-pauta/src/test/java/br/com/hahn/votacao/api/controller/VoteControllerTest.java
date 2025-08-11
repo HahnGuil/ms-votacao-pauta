@@ -3,17 +3,16 @@ package br.com.hahn.votacao.api.controller;
 import br.com.hahn.votacao.domain.dto.request.VoteRequestDTO;
 import br.com.hahn.votacao.domain.dto.response.VoteResponseDTO;
 import br.com.hahn.votacao.domain.service.VoteService;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 class VoteControllerTest {
 
@@ -21,31 +20,39 @@ class VoteControllerTest {
     private VoteController voteController;
 
     @BeforeEach
-    void setUp() {
-        voteService = Mockito.mock(VoteService.class);
+    void setUp() throws Exception {
+        voteService = mock(VoteService.class);
         voteController = new VoteController(voteService);
+
+        java.lang.reflect.Field field = voteController.getClass().getSuperclass().getDeclaredField("apiCurrentVersion");
+        field.setAccessible(true);
+        field.set(voteController, "/v1");
     }
 
     @Test
-    void testVote_ReturnsCreatedResponse() {
-        String votingId = "voting123";
-        VoteRequestDTO voteRequestDTO = new VoteRequestDTO("06f8376c08df3ec","user456", "SIM");
-        VoteRequestDTO expectedVote = new VoteRequestDTO(votingId, voteRequestDTO.userId(), voteRequestDTO.voteOption());
+    void vote_shouldReturnCreatedResponse() {
+        String version = "/v1";
+        String votingId = "123";
+        VoteRequestDTO requestDTO = new VoteRequestDTO(votingId, "user1", "YES", version);
 
-        Mockito.when(voteService.sendVoteToQueue(any(VoteRequestDTO.class)))
-                .thenReturn(Mono.empty());
+        when(voteService.sendVoteToQueue(any(VoteRequestDTO.class))).thenReturn(Mono.empty());
 
-        Mono<ResponseEntity<VoteResponseDTO>> result = voteController.vote(votingId, voteRequestDTO);
+        Mono<ResponseEntity<VoteResponseDTO>> responseMono = voteController.vote(version, votingId, requestDTO);
 
-        StepVerifier.create(result)
+        StepVerifier.create(responseMono)
                 .assertNext(response -> {
                     assertEquals(HttpStatus.CREATED, response.getStatusCode());
-                    Assertions.assertNotNull(response.getBody());
+                    assertNotNull(response.getBody());
                     assertEquals("Voto recebido com sucesso", response.getBody().message());
                 })
                 .verifyComplete();
 
-        Mockito.verify(voteService).sendVoteToQueue(expectedVote);
+        ArgumentCaptor<VoteRequestDTO> captor = ArgumentCaptor.forClass(VoteRequestDTO.class);
+        verify(voteService, times(1)).sendVoteToQueue(captor.capture());
+        VoteRequestDTO captured = captor.getValue();
+        assertEquals(votingId, captured.votingId());
+        assertEquals("user1", captured.userId());
+        assertEquals("YES", captured.voteOption());
+        assertEquals(version, captured.apiVersion());
     }
 }
-

@@ -29,7 +29,7 @@ class UserServiceTest {
 
     @Test
     void createUser_shouldCreateNewUser_whenUserDoesNotExist() {
-        UserRequestDTO requestDTO = new UserRequestDTO("John Doe", "12345678901");
+        UserRequestDTO requestDTO = new UserRequestDTO("John Doe", "12345678901", "v1");
         User user = new User();
         user.setUserName(requestDTO.userName());
         user.setUserCPF(requestDTO.userCPF());
@@ -56,7 +56,7 @@ class UserServiceTest {
 
     @Test
     void createUser_shouldThrowException_whenUserAlreadyExists() {
-        UserRequestDTO requestDTO = new UserRequestDTO("Jane Doe", "98765432100");
+        UserRequestDTO requestDTO = new UserRequestDTO("Jane Doe", "98765432100", "v1");
 
         when(userRepository.existsUserByuserCPF(requestDTO.userCPF())).thenReturn(Mono.just(true));
 
@@ -75,7 +75,7 @@ class UserServiceTest {
 
     @Test
     void convertToCollection_shouldConvertDTOToUser() throws Exception {
-        UserRequestDTO requestDTO = new UserRequestDTO("Alice", "11122233344");
+        UserRequestDTO requestDTO = new UserRequestDTO("Alice", "11122233344", "v1");
 
         Method method = UserService.class.getDeclaredMethod("convertToCollection", UserRequestDTO.class);
         method.setAccessible(true);

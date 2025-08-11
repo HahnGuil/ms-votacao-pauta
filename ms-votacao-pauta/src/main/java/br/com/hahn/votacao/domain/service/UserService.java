@@ -23,7 +23,7 @@ public class UserService {
 
     public Mono<UserResponseDTO> createUser(UserRequestDTO userRequestDTO) {
 
-        userServiceLogger.info("Criando um novo usuário");
+        userServiceLogger.info("Criando um novo usuário - API Version: {}", userRequestDTO.apiVersion());
 
         User user = convertToCollection(userRequestDTO);
         return userRepository.existsUserByuserCPF(userRequestDTO.userCPF())
@@ -32,8 +32,10 @@ public class UserService {
                         userServiceLogger.info("Usuário já existe, exceção sendo lançada");
                         return Mono.error(new UserAlreadyExistsException("User already exists with CPF: " + userRequestDTO.userCPF()));
                     }
+
                     return userRepository.save(user)
-                            .map(savedUser -> new UserResponseDTO(savedUser.getUserId(), savedUser.getUserCPF()));
+                            .map(savedUser -> new UserResponseDTO(
+                                    savedUser.getUserId(), savedUser.getUserCPF()));
                 });
     }
 
