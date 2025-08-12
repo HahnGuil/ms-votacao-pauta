@@ -75,4 +75,57 @@ class KafkaHealthIndicatorTest {
                 .expectNext(true)
                 .verifyComplete();
     }
+
+    @Test
+    void buildHealthFromStatus_shouldReturnDownWhenNull() throws Exception {
+        KafkaHealthIndicator indicator = new KafkaHealthIndicator();
+        Method method = KafkaHealthIndicator.class.getDeclaredMethod("buildHealthFromStatus", Boolean.class);
+        method.setAccessible(true);
+
+        Health health = (Health) method.invoke(indicator, (Boolean) null);
+        assertEquals(Status.DOWN, health.getStatus());
+        assertEquals("Unavailable", health.getDetails().get("kafka"));
+    }
+
+    @Test
+    void checkKafkaHealth_shouldHandleInterruption() {
+        KafkaHealthIndicator indicator = new KafkaHealthIndicator() {
+            @Override
+            public Mono<Boolean> checkKafkaHealth() {
+                return Mono.fromCallable(() -> {
+                    Thread.currentThread().interrupt();
+                    throw new InterruptedException("Thread interrupted");
+                });
+            }
+        };
+
+        Mono<Health> healthMono = indicator.health();
+
+        StepVerifier.create(healthMono)
+                .assertNext(health -> {
+                    assertEquals(Status.DOWN, health.getStatus());
+                    assertEquals("Error checking health", health.getDetails().get("kafka"));
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    void health_shouldReturnDownWhenCheckKafkaHealthReturnsFalse() {
+        KafkaHealthIndicator indicator = new KafkaHealthIndicator() {
+            @Override
+            public Mono<Boolean> checkKafkaHealth() {
+                return Mono.just(false);
+            }
+        };
+
+        Mono<Health> healthMono = indicator.health();
+
+        StepVerifier.create(healthMono)
+                .assertNext(health -> {
+                    assertEquals(Status.DOWN, health.getStatus());
+                    assertEquals("Unavailable", health.getDetails().get("kafka"));
+                })
+                .verifyComplete();
+    }
+
 }

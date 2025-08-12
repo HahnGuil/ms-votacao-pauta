@@ -9,6 +9,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
+
+/**
+ * Controller responsavel por gerenciar operações relacionadas ao usuário do sistema de votação.
+ *
+ * @author HahnGuil
+ * @since 1.0
+ */
 @RestController
 @RequestMapping("/user")
 public class UserController extends BaseController {
@@ -19,6 +26,15 @@ public class UserController extends BaseController {
         this.userService = userService;
     }
 
+    /**
+     * Cria um novo usuário
+     *
+     * Adapta a versão da API recebida no parametro de versionamento e colcoa em um DTO para o service consumir.
+     *
+     * @param version versão da API que está sendo utilizada current ou legacy
+     * @param userRequestDTO dados do usuário que esta sendo criado (nome e cpf)
+     * @return ResponseEntity com os dados do usuário criado (userId e CPF) e status 201.
+     */
     @PostMapping("/{version}/create-user")
     public Mono<ResponseEntity<UserResponseDTO>> createUser(
             @PathVariable String version, @RequestBody UserRequestDTO userRequestDTO) {

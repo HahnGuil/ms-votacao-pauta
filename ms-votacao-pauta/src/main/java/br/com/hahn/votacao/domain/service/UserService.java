@@ -10,6 +10,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+/**
+ * Service responsável pelo gerenciamento de usuários do sistema de votação.
+ * <p>
+ * Controla criação e consulta de usuários, garantindo unicidade de CPF
+ * e conversão adequada entre DTOs e entidades de domínio.
+ *
+ * @author HahnGuil
+ * @since 1.0
+ */
 @Service
 public class UserService {
 
@@ -21,6 +30,16 @@ public class UserService {
         this.userRepository = userRepository;
     }
 
+    /**
+     * Cria novo usuário validando unicidade do CPF.
+     * <p>
+     * Verifica se já existe usuário com o CPF informado antes de
+     * persistir os dados, garantindo regra de negócio de CPF único.
+     *
+     * @param userRequestDTO dados do usuário a ser criado
+     * @return dados do usuário criado com ID gerado
+     * @throws UserAlreadyExistsException se CPF já estiver cadastrado
+     */
     public Mono<UserResponseDTO> createUser(UserRequestDTO userRequestDTO) {
 
         userServiceLogger.info("Criando um novo usuário - API Version: {}", userRequestDTO.apiVersion());
@@ -39,10 +58,22 @@ public class UserService {
                 });
     }
 
+    /**
+     * Busca usuário por ID.
+     *
+     * @param userId ID do usuário a ser localizado
+     * @return usuário encontrado ou vazio se não existir
+     */
     public Mono<User> findById(String userId) {
         return userRepository.findById(userId);
     }
 
+    /**
+     * Converte DTO de request para entidade de domínio.
+     *
+     * @param userRequestDTO dados de entrada
+     * @return entidade User configurada
+     */
     private User convertToCollection(UserRequestDTO userRequestDTO) {
         User user = new User();
         user.setUserName(userRequestDTO.userName());

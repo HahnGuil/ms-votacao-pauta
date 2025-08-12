@@ -3,6 +3,15 @@ package br.com.hahn.votacao.api.controller.base;
 
 import org.springframework.beans.factory.annotation.Value;
 
+/**
+ * Classe base abstrata para constrollers da API.
+ *
+ * Ela determina a versão da API que esta sendo consumimda, current ou legacy
+ * usando o metodo determineApiVersion.
+ *
+ * @author HahnGuil
+ * @since 1.0
+ */
 public abstract class BaseController {
 
     @Value("${api.current.version}")

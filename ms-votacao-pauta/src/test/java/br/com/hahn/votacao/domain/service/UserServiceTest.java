@@ -64,7 +64,7 @@ class UserServiceTest {
 
         StepVerifier.create(result)
                 .expectErrorSatisfies(ex -> {
-                    assertTrue(ex instanceof UserAlreadyExistsException);
+                    assertInstanceOf(UserAlreadyExistsException.class, ex);
                     assertTrue(ex.getMessage().contains(requestDTO.userCPF()));
                 })
                 .verify();
@@ -118,5 +118,49 @@ class UserServiceTest {
                 .verifyComplete();
 
         verify(userRepository).findById("userId");
+    }
+
+    @Test
+    void createUser_shouldHandleRepositoryError_onExistsCheck() {
+        UserRequestDTO requestDTO = new UserRequestDTO("John Doe", "12345678901", "v1");
+
+        when(userRepository.existsUserByuserCPF(requestDTO.userCPF()))
+                .thenReturn(Mono.error(new RuntimeException("Database connection error")));
+
+        Mono<UserResponseDTO> result = userService.createUser(requestDTO);
+
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
+
+        verify(userRepository).existsUserByuserCPF(requestDTO.userCPF());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void createUser_shouldHandleRepositoryError_onSave() {
+        UserRequestDTO requestDTO = new UserRequestDTO("John Doe", "12345678901", "v1");
+
+        when(userRepository.existsUserByuserCPF(requestDTO.userCPF())).thenReturn(Mono.just(false));
+        when(userRepository.save(any(User.class)))
+                .thenReturn(Mono.error(new RuntimeException("Save operation failed")));
+
+        Mono<UserResponseDTO> result = userService.createUser(requestDTO);
+
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+
+    @Test
+    void findById_shouldHandleRepositoryError() {
+        when(userRepository.findById("userId"))
+                .thenReturn(Mono.error(new RuntimeException("Database error")));
+
+        Mono<User> result = userService.findById("userId");
+
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
     }
 }

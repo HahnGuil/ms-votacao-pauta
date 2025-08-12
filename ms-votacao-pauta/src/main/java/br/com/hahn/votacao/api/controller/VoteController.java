@@ -9,6 +9,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
+/**
+ * Controller responsavel por gerenciar as operações de Votos
+ *
+ * @author HahnGuil
+ * @since 1.0
+ */
 @RestController
 @RequestMapping("/vote")
 public class VoteController extends BaseController {
@@ -19,6 +25,16 @@ public class VoteController extends BaseController {
         this.voteService = voteService;
     }
 
+    /**
+     * Realiza o voto do usuário na votação informada
+     *
+     * Coloca a versão da API recebida por parametro no DTO para o serviço
+     *
+     * @param version versão da API que esta sendo utilizada
+     * @param votingId id da votação que seta sendo votada a pauta
+     * @param voteRequestDTO DTO que passa os dados do usuário para o service, com os camopos votingID, userId, voteOptin, apiVersion
+     * @return retorna uma mensagem em String confirmando o voto do usuário com um código 201
+     */
     @PostMapping("/{version}/{votingId}")
     public Mono<ResponseEntity<VoteResponseDTO>> vote(
             @PathVariable String version,

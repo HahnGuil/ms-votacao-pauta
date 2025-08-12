@@ -31,6 +31,7 @@ class VotingServiceTest {
         votingRepository = mock(VotingRepository.class);
         votingService = new VotingService(votingRepository);
         ReflectionTestUtils.setField(votingService, "serverPort", "8080");
+        ReflectionTestUtils.setField(votingService, "apiContext", "");
     }
 
     @Test
@@ -47,8 +48,8 @@ class VotingServiceTest {
         StepVerifier.create(result)
                 .assertNext(resp -> {
                     assertEquals("id123", resp.votingId());
-                    assertTrue(resp.voteUrl().contains("8080/vote/id123"));
-                    assertTrue(resp.resultUrl().contains("8080/result/id123"));
+                    assertTrue(resp.voteUrl().contains("8080/vote/v1/id123"));
+                    assertTrue(resp.resultUrl().contains("8080/result/v1/id123"));
                 })
                 .verifyComplete();
 
@@ -72,7 +73,7 @@ class VotingServiceTest {
                 .assertNext(response -> {
                     assertNotNull(response);
                     assertEquals("abc123", response.votingId());
-                    assertEquals("http://localhost:8080/vote/abc123", response.voteUrl());
+                    assertEquals("http://localhost:8080/vote/v1/abc123", response.voteUrl());
                     assertEquals(voting.getCloseVotingDate(), response.closeVotingDate());
                 })
                 .verifyComplete();
@@ -108,7 +109,7 @@ class VotingServiceTest {
                 .assertNext(response -> {
                     assertNotNull(response);
                     assertEquals("def456", response.votingId());
-                    assertEquals("http://localhost:8080/vote/def456", response.voteUrl());
+                    assertEquals("http://localhost:8080/vote/v1/def456", response.voteUrl());
                     assertEquals(voting.getCloseVotingDate(), response.closeVotingDate());
                 })
                 .verifyComplete();
@@ -133,7 +134,7 @@ class VotingServiceTest {
                 .assertNext(response -> {
                     assertNotNull(response);
                     assertEquals("zeroId", response.votingId());
-                    assertEquals("http://localhost:8080/vote/zeroId", response.voteUrl());
+                    assertEquals("http://localhost:8080/vote/v1/zeroId", response.voteUrl());
                     assertEquals(voting.getCloseVotingDate(), response.closeVotingDate());
                 })
                 .verifyComplete();
@@ -141,7 +142,7 @@ class VotingServiceTest {
         verify(votingRepository).save(any(Voting.class));
     }
 
-    @Test
+    @Test  // Adicionada anotação @Test que estava faltando
     void testCreateVoting_NegativeExpirationDate_UsesDefault() {
         VotingRequestDTO request = new VotingRequestDTO("Assunto Teste", "-10", "v1");
         Voting voting = new Voting();
@@ -158,7 +159,7 @@ class VotingServiceTest {
                 .assertNext(response -> {
                     assertNotNull(response);
                     assertEquals("negId", response.votingId());
-                    assertEquals("http://localhost:8080/vote/negId", response.voteUrl());
+                    assertEquals("http://localhost:8080/vote/v1/negId", response.voteUrl()); // Corrigida URL para incluir v1
                     assertEquals(voting.getCloseVotingDate(), response.closeVotingDate());
                 })
                 .verifyComplete();
@@ -171,7 +172,7 @@ class VotingServiceTest {
         Voting voting = new Voting();
         voting.setVotingId("notExpiredId");
         voting.setCloseVotingDate(Instant.now().plusSeconds(120));
-        voting.setVotingSatus(true); // Certifica-se que está ativo
+        voting.setVotingSatus(true);
 
         when(votingRepository.findById("notExpiredId")).thenReturn(Mono.just(voting));
 
@@ -188,7 +189,7 @@ class VotingServiceTest {
         Voting voting = new Voting();
         voting.setVotingId("expiredId");
         voting.setCloseVotingDate(Instant.now().minusSeconds(10));
-        voting.setVotingSatus(false); // Certifica-se que está inativo
+        voting.setVotingSatus(false);
 
         when(votingRepository.findById("expiredId")).thenReturn(Mono.just(voting));
 
@@ -316,7 +317,120 @@ class VotingServiceTest {
                 method.invoke(votingService, now, "abc")
         );
 
-        assertTrue(exception.getCause() instanceof InvalidFormatExpirationDate);
+        assertInstanceOf(InvalidFormatExpirationDate.class, exception.getCause());
         assertEquals("Invalid time format, poll timeout set to 1 minute.", exception.getCause().getMessage());
+    }
+
+    @Test
+    void createVoting_shouldError_whenRepositoryFails() {
+        VotingRequestDTO dto = new VotingRequestDTO("subject", "5", "v1");
+        when(votingRepository.save(any(Voting.class)))
+                .thenReturn(Mono.error(new RuntimeException("Database connection error")));
+
+        Mono<VotingResponseDTO> result = votingService.createVoting(dto);
+
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+
+    @Test
+    void findAllVotings_shouldError_whenRepositoryFails() {
+        when(votingRepository.findAll())
+                .thenReturn(Flux.error(new RuntimeException("Database error")));
+
+        Flux<Voting> result = votingService.findAllVotings();
+
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+
+    @Test
+    void findById_shouldError_whenRepositoryFails() {
+        when(votingRepository.findById("id"))
+                .thenReturn(Mono.error(new RuntimeException("Database error")));
+
+        Mono<Voting> result = votingService.findById("id");
+
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+
+    @Test
+    void saveVoting_shouldError_whenRepositoryFails() {
+        Voting voting = new Voting();
+        when(votingRepository.save(voting))
+                .thenReturn(Mono.error(new RuntimeException("Save failed")));
+
+        Mono<Voting> result = votingService.saveVoting(voting);
+
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+
+    @Test
+    void validateExpireVotingTime_shouldError_whenRepositoryFails() {
+        when(votingRepository.findById("votingId"))
+                .thenReturn(Mono.error(new RuntimeException("Database connection error")));
+
+        Mono<Void> result = votingService.validateExpireVotingTime("votingId");
+
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+
+    @Test
+    void validateExpireVotingTime_shouldError_whenVotingExpiredByTime() {
+        Voting voting = new Voting();
+        voting.setVotingId("expiredTimeId");
+        voting.setVotingSatus(true);
+        voting.setCloseVotingDate(Instant.now().minusSeconds(60));
+
+        when(votingRepository.findById("expiredTimeId")).thenReturn(Mono.just(voting));
+
+        Mono<Void> result = votingService.validateExpireVotingTime("expiredTimeId");
+
+        StepVerifier.create(result)
+                .expectErrorMatches(throwable ->
+                        throwable instanceof VotingExpiredException &&
+                                throwable.getMessage().equals("This voting has expired, you can no longer vote.")
+                )
+                .verify();
+    }
+
+    @Test
+    void parseExpirationMinutes_shouldReturnDefault_whenInputIsBlank() throws Exception {
+        Method method = VotingService.class.getDeclaredMethod("parseExpirationMinutes", String.class);
+        method.setAccessible(true);
+
+        long result = (long) method.invoke(votingService, "   ");
+
+        assertEquals(1L, result);
+    }
+
+    @Test
+    void buildVoteUrl_shouldGenerateCorrectUrl() throws Exception {
+        ReflectionTestUtils.setField(votingService, "apiContext", "/api");
+        Method method = VotingService.class.getDeclaredMethod("buildVoteUrl", String.class, String.class);
+        method.setAccessible(true);
+
+        String result = (String) method.invoke(votingService, "v1", "voting123");
+
+        assertEquals("http://localhost:8080/api/vote/v1/voting123", result);
+    }
+
+    @Test
+    void buildResultUrl_shouldGenerateCorrectUrl() throws Exception {
+        ReflectionTestUtils.setField(votingService, "apiContext", "/api");
+        Method method = VotingService.class.getDeclaredMethod("buildResultUrl", String.class, String.class);
+        method.setAccessible(true);
+
+        String result = (String) method.invoke(votingService, "v1", "voting123");
+
+        assertEquals("http://localhost:8080/api/result/v1/voting123", result);
     }
 }

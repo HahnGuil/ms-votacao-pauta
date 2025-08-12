@@ -10,6 +10,12 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
+/**
+ * Representa uma pauta de votação com período definido.
+ * <p>
+ * votingSatus: true = ativa, false = encerrada.
+ * Período: openVotingDate até closeVotingDate.
+ */
 @Document
 @Getter
 @Setter

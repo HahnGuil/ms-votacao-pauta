@@ -13,12 +13,30 @@ import reactor.core.publisher.Mono;
 
 import java.util.Map;
 
+/**
+ * Cliente para validação de CPF via serviço externo.
+ *
+ * Verifica elegibilidade de CPFs para votação através de chamada reativa
+ * para serviço terceirizado. HTTP 404 = CPF inválido.
+ *
+ * @author HahnGuil
+ * @since 1.0
+ */
 @Component
 public class CpfValidationClient {
 
     private static final Logger logger = LoggerFactory.getLogger(CpfValidationClient.class);
+    private static final String VALIDATION_ENDPOINT = "/api/v1/cpf/validate";
+    private static final String CPF_FIELD = "cpf";
+
     private final WebClient webClient;
 
+    /**
+     * Configura WebClient com URL base do serviço de validação.
+     *
+     * @param webClientBuilder builder configurado para criação do WebClient
+     * @param baseUrl URL base (padrão: http://localhost:8081)
+     */
     public CpfValidationClient(WebClient.Builder webClientBuilder,
                                @Value("${cpf.validation.service.url:http://localhost:8081}") String baseUrl) {
         this.webClient = webClientBuilder
@@ -26,23 +44,38 @@ public class CpfValidationClient {
                 .build();
     }
 
+    /**
+     * Valida CPF para verificar elegibilidade de voto.
+     *
+     * @param cpf CPF a ser validado
+     * @return status de elegibilidade do CPF
+     * @throws InvalidCpfException se CPF for inválido (HTTP 404)
+     * @throws RuntimeException para outros erros de comunicação
+     */
     public Mono<CpfValidationResponseDTO> validateCpf(String cpf) {
         logger.info("Chamando serviço de validação de CPF");
 
         return webClient
                 .post()
-                .uri("/api/v1/cpf/validate")
-                .bodyValue(Map.of("cpf", cpf))
+                .uri(VALIDATION_ENDPOINT)
+                .bodyValue(Map.of(CPF_FIELD, cpf))
                 .retrieve()
                 .bodyToMono(CpfValidationResponseDTO.class)
                 .doOnSuccess(response -> logger.info("CPF validado com sucesso: {}", response.status()))
-                .onErrorResume(WebClientResponseException.class, ex -> {
-                    if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
-                        logger.warn("CPF inválido retornado pelo serviço");
-                        return Mono.error(new InvalidCpfException("CPF inválido"));
-                    }
-                    logger.error("Erro ao validar CPF: {}", ex.getMessage());
-                    return Mono.error(new RuntimeException("Erro na validação do CPF", ex));
-                });
+                .onErrorResume(WebClientResponseException.class, this::handleWebClientError);
+    }
+
+    /**
+     * Mapeia erros HTTP para exceções de domínio.
+     * 404 → InvalidCpfException, outros → RuntimeException.
+     */
+    private Mono<CpfValidationResponseDTO> handleWebClientError(WebClientResponseException ex) {
+        if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+            logger.warn("CPF inválido retornado pelo serviço");
+            return Mono.error(new InvalidCpfException("CPF inválido"));
+        }
+
+        logger.error("Erro ao validar CPF: {}", ex.getMessage());
+        return Mono.error(new RuntimeException("Erro na validação do CPF", ex));
     }
 }

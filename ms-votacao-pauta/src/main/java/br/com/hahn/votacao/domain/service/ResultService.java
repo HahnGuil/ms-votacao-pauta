@@ -1,6 +1,5 @@
 package br.com.hahn.votacao.domain.service;
 
-
 import br.com.hahn.votacao.domain.dto.ResultCreateDTO;
 import br.com.hahn.votacao.domain.dto.context.ServiceRequestContext;
 import br.com.hahn.votacao.domain.dto.response.ResultResponseDTO;
@@ -19,6 +18,15 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 
+/**
+ * Service para processamento e consulta de resultados de votações.
+ * <p>
+ * Calcula resultados baseado em maioria simples (SIM > NÃO = APROVADO)
+ * e gerencia ciclo de vida desde validação até persistência.
+ *
+ * @author HahnGuil
+ * @since 1.0
+ */
 @Service
 public class ResultService {
 
@@ -34,6 +42,14 @@ public class ResultService {
         this.votingService = votingService;
     }
 
+    /**
+     * Recupera resultado consolidado de uma votação.
+     *
+     * @param requestContext contexto contendo ID da votação
+     * @return dados do resultado
+     * @throws VotingNotFoundException se votação não existir
+     * @throws ResultNotReadyException se resultado ainda não disponível
+     */
     public Mono<ResultResponseDTO> getResult(ServiceRequestContext requestContext) {
         resultServiceLogger.info("Buscando resultado para votingId: {}", requestContext.resourceId());
 
@@ -49,6 +65,9 @@ public class ResultService {
                 .doOnError(error -> resultServiceLogger.debug("Problema ao buscar resultado para votingId: {}", requestContext.resourceId()));
     }
 
+    /**
+     * Verifica se resultado está disponível para consulta.
+     */
     public Mono<Boolean> isResultAvailable(ServiceRequestContext requestContext) {
         return resultRepository.findById(requestContext.resourceId())
                 .map(result -> true)
@@ -56,21 +75,26 @@ public class ResultService {
                 .doOnNext(exists -> resultServiceLogger.debug("Resultado disponível para votingId {}: {}", requestContext.resourceId(), exists));
     }
 
+    /**
+     * Calcula e persiste resultado de votação encerrada.
+     *
+     * @param votingId ID da votação para processar
+     * @return resultado calculado
+     * @throws VotingNotFoundException se votação não existir
+     * @throws ResultNotReadyException se votação ainda ativa
+     */
     public Mono<ResultResponseDTO> createResult(String votingId) {
         resultServiceLogger.info("Iniciando cálculo do resultado para votingId: {}", votingId);
 
-        // Primeiro verifica se a votação existe
         return votingService.findById(votingId)
                 .switchIfEmpty(Mono.error(new VotingNotFoundException("Voting not found with ID: " + votingId)))
                 .flatMap(voting -> {
-                    // Verifica se a votação já foi encerrada
                     if (voting.isVotingSatus()) {
                         return Mono.error(new ResultNotReadyException(
                                 "Result not ready yet. Voting is still active and will close at: " + voting.getCloseVotingDate()
                         ));
                     }
 
-                    // Verifica se já existe um resultado
                     return resultRepository.findById(votingId)
                             .flatMap(existingResult -> {
                                 resultServiceLogger.info("Resultado já existe para votingId: {}", votingId);
@@ -85,6 +109,9 @@ public class ResultService {
                 });
     }
 
+    /**
+     * Calcula resultado final e persiste na base.
+     */
     private Mono<ResultResponseDTO> calculateAndSaveResult(String votingId, Voting voting) {
         Mono<List<Vote>> votesMono = voteService.findByVotingId(votingId).collectList();
 
@@ -113,16 +140,22 @@ public class ResultService {
                 .doOnError(error -> resultServiceLogger.error("Erro ao calcular resultado para votingId: {}", votingId, error));
     }
 
+    /**
+     * Verifica status da votação e lança exceção apropriada quando resultado não existe.
+     *
+     * @param votingId ID da votação para verificar
+     * @return nunca retorna - sempre lança exceção
+     * @throws VotingNotFoundException se votação não existir
+     * @throws ResultNotReadyException se votação ativa ou resultado sendo processado
+     */
     private Mono<ResultResponseDTO> checkVotingStatusAndThrowAppropriateException(String votingId) {
         return votingService.findById(votingId)
                 .<ResultResponseDTO>flatMap(voting -> {
                     if (voting.isVotingSatus()) {
-                        // Votação ainda está ativa
                         return Mono.error(new ResultNotReadyException(
                                 "Result not ready yet. Voting is still active and will close at: " + voting.getCloseVotingDate()
                         ));
                     } else {
-                        // Votação foi encerrada mas resultado não foi calculado ainda
                         return Mono.error(new ResultNotReadyException(
                                 "Result is being processed. Voting ended at: " + voting.getCloseVotingDate() +
                                         ". Please try again in a few moments."
@@ -132,7 +165,9 @@ public class ResultService {
                 .switchIfEmpty(Mono.error(new VotingNotFoundException("Voting not found with ID: " + votingId)));
     }
 
-
+    /**
+     * Converte DTO em entidade Result.
+     */
     Result convertToResult(ResultCreateDTO resultCreateDTO) {
         Result result = new Result();
         result.setVotingId(resultCreateDTO.votingId());
@@ -142,6 +177,10 @@ public class ResultService {
         return result;
     }
 
+    /**
+     * Calcula resultado baseado em maioria simples.
+     * SIM > NÃO = APROVADO, caso contrário REPROVADO.
+     */
     VotingResult calculateVotingResult(List<Vote> votes) {
         if (votes.isEmpty()) {
             resultServiceLogger.info("Nenhum voto encontrado, resultado padrão: REPROVADO");
@@ -157,5 +196,4 @@ public class ResultService {
 
         return simCount > naoCount ? VotingResult.APROVADO : VotingResult.REPROVADO;
     }
-
 }

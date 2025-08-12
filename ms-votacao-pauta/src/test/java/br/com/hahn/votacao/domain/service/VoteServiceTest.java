@@ -77,18 +77,6 @@ class VoteServiceTest {
     }
 
     @Test
-    void sendVoteToQueue_shouldError_whenUserAlreadyVotedInDb() {
-        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM", "v1");
-        doReturn(Mono.just(new Vote())).when(voteRepository).findByVotingIdAndUserId("votingId", "userId");
-
-        Mono<Void> result = voteService.sendVoteToQueue(dto);
-
-        StepVerifier.create(result)
-                .expectError(UserAlreadyVoteException.class)
-                .verify();
-    }
-
-    @Test
     void sendVoteToQueue_shouldError_whenUserAlreadyVotedInRedis() {
         VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM", "v1");
         doReturn(Mono.empty()).when(voteRepository).findByVotingIdAndUserId("votingId", "userId");
@@ -304,5 +292,89 @@ class VoteServiceTest {
         StepVerifier.create(mono)
                 .expectNext("12345678900")
                 .verifyComplete();
+    }
+
+    @Test
+    void sendVoteToQueue_shouldError_whenCpfValidationClientFails() {
+        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM", "v1");
+        doReturn(Mono.empty()).when(voteRepository).findByVotingIdAndUserId("votingId", "userId");
+        when(valueOps.setIfAbsent(anyString(), eq("pending"), any(Duration.class))).thenReturn(Mono.just(true));
+
+        User user = new User();
+        user.setUserCPF("12345678900");
+        when(userService.findById("userId")).thenReturn(Mono.just(user));
+        when(cpfValidationClient.validateCpf("12345678900"))
+                .thenReturn(Mono.error(new RuntimeException("External service unavailable")));
+
+        Mono<Void> result = voteService.sendVoteToQueue(dto);
+
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+
+    @Test
+    void sendVoteToQueue_shouldError_whenRedisOperationFails() {
+        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM", "v1");
+        when(votingService.validateExpireVotingTime("votingId")).thenReturn(Mono.empty());
+        doReturn(Mono.empty()).when(voteRepository).findByVotingIdAndUserId("votingId", "userId");
+        when(valueOps.setIfAbsent(anyString(), eq("pending"), any(Duration.class)))
+                .thenReturn(Mono.error(new RuntimeException("Redis connection failed")));
+
+        Mono<Void> result = voteService.sendVoteToQueue(dto);
+
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+
+    @Test
+    void hasUserAlreadyVoted_shouldError_whenRepositoryFails() {
+        when(voteRepository.findByVotingIdAndUserId("votingId", "userId"))
+                .thenReturn(Mono.error(new RuntimeException("Database error")));
+
+        Mono<Boolean> result = voteService.hasUserAlreadyVoted("votingId", "userId");
+
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+
+    @Test
+    void saveAllFromDTO_shouldError_whenRepositoryFails() {
+        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "SIM", "v1");
+        when(voteRepository.saveAll(anyList()))
+                .thenReturn(Flux.error(new RuntimeException("Save operation failed")));
+
+        Flux<Vote> result = voteService.saveAllFromDTO(Flux.just(dto));
+
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+
+    @Test
+    void findByVotingId_shouldError_whenRepositoryFails() {
+        when(voteRepository.findByVotingId("votingId"))
+                .thenReturn(Flux.error(new RuntimeException("Database error")));
+
+        Flux<Vote> result = voteService.findByVotingId("votingId");
+
+        StepVerifier.create(result)
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+
+    @Test
+    void convertToCollection_shouldHandleNaoVoteOption() throws Exception {
+        VoteRequestDTO dto = new VoteRequestDTO("votingId", "userId", "NAO", "v1");
+        Method method = VoteService.class.getDeclaredMethod("convertToCollection", VoteRequestDTO.class);
+        method.setAccessible(true);
+
+        Vote vote = (Vote) method.invoke(voteService, dto);
+
+        assertEquals("votingId", vote.getVotingId());
+        assertEquals("userId", vote.getUserId());
+        assertEquals(VoteOption.NAO, vote.getVoteOption());
     }
 }

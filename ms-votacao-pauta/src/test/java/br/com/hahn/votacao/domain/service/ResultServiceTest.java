@@ -1,5 +1,6 @@
 package br.com.hahn.votacao.domain.service;
 
+import br.com.hahn.votacao.domain.dto.ResultCreateDTO;
 import br.com.hahn.votacao.domain.dto.context.ServiceRequestContext;
 import br.com.hahn.votacao.domain.enums.VoteOption;
 import br.com.hahn.votacao.domain.enums.VotingResult;
@@ -223,6 +224,81 @@ class ResultServiceTest {
         List<Vote> votes = Collections.emptyList();
         VotingResult result = resultService.calculateVotingResult(votes);
         assertEquals(VotingResult.REPROVADO, result);
+    }
+
+    @Test
+    void testCalculateVotingResultAprovado() {
+        Vote vote1 = new Vote();
+        vote1.setVoteOption(VoteOption.SIM);
+        Vote vote2 = new Vote();
+        vote2.setVoteOption(VoteOption.SIM);
+        Vote vote3 = new Vote();
+        vote3.setVoteOption(VoteOption.NAO);
+
+        List<Vote> votes = Arrays.asList(vote1, vote2, vote3);
+        VotingResult result = resultService.calculateVotingResult(votes);
+
+        assertEquals(VotingResult.APROVADO, result);
+    }
+
+    @Test
+    void testCalculateVotingResultReprovado() {
+        Vote vote1 = new Vote();
+        vote1.setVoteOption(VoteOption.SIM);
+        Vote vote2 = new Vote();
+        vote2.setVoteOption(VoteOption.NAO);
+        Vote vote3 = new Vote();
+        vote3.setVoteOption(VoteOption.NAO);
+
+        List<Vote> votes = Arrays.asList(vote1, vote2, vote3);
+        VotingResult result = resultService.calculateVotingResult(votes);
+
+        assertEquals(VotingResult.REPROVADO, result);
+    }
+
+    @Test
+    void testCalculateVotingResultEmpate() {
+        Vote vote1 = new Vote();
+        vote1.setVoteOption(VoteOption.SIM);
+        Vote vote2 = new Vote();
+        vote2.setVoteOption(VoteOption.NAO);
+
+        List<Vote> votes = Arrays.asList(vote1, vote2);
+        VotingResult result = resultService.calculateVotingResult(votes);
+
+        assertEquals(VotingResult.REPROVADO, result); // Empate = REPROVADO
+    }
+
+    @Test
+    void testConvertToResult() {
+        ResultCreateDTO dto = new ResultCreateDTO(
+                "v1", "Assunto", 10, VotingResult.APROVADO
+        );
+
+        Result result = resultService.convertToResult(dto);
+
+        assertEquals("v1", result.getVotingId());
+        assertEquals("Assunto", result.getVotingSubject());
+        assertEquals(10, result.getTotalVotes());
+        assertEquals(VotingResult.APROVADO, result.getVotingResult());
+    }
+
+    @Test
+    void testCreateResultErrorOnSave() {
+        String votingId = "v11";
+        Voting voting = new Voting();
+        voting.setVotingSatus(false);
+        voting.setSubject("Assunto");
+        when(votingService.findById(votingId)).thenReturn(Mono.just(voting));
+        when(resultRepository.findById(votingId)).thenReturn(Mono.empty());
+
+        when(voteService.findByVotingId(votingId)).thenReturn(Flux.empty());
+        when(resultRepository.save(any(Result.class)))
+                .thenReturn(Mono.error(new RuntimeException("Database error")));
+
+        StepVerifier.create(resultService.createResult(votingId))
+                .expectError(RuntimeException.class)
+                .verify();
     }
 }
 

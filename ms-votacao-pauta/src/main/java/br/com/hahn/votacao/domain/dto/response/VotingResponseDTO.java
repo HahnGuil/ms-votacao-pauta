@@ -4,6 +4,15 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
 
+/**
+ * Resposta da criação de nova votação com informações de acesso.
+ *
+ * Contém URLs geradas dinamicamente e metadados da sessão
+ * de votação criada para facilitar integração do cliente.
+ *
+ * @author HahnGuil
+ * @since 1.0
+ */
 public record VotingResponseDTO(
         @Schema(description = "id da votação que foi criada", example = "6898ff38e855e877c1127394")
         String votingId,

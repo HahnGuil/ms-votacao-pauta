@@ -5,6 +5,15 @@ import org.springframework.boot.actuate.health.ReactiveHealthIndicator;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
+/**
+ * Health check reativo para verificar conectividade com Kafka.
+ * <p>
+ * Usado pelo Spring Boot Actuator para monitoramento via `/actuator/health/kafka`.
+ * ⚠️ Implementação atual é mock - retorna sempre UP para desenvolvimento.
+ *
+ * @author HahnGuil
+ * @since 1.0
+ */
 @Component
 public class KafkaHealthIndicator implements ReactiveHealthIndicator {
 
@@ -13,6 +22,11 @@ public class KafkaHealthIndicator implements ReactiveHealthIndicator {
     private static final String KAFKA_UNAVAILABLE = "Unavailable";
     private static final String KAFKA_ERROR = "Error checking health";
 
+    /**
+     * Verifica status do Kafka para health check do Actuator.
+     *
+     * @return Health UP/DOWN baseado na conectividade com Kafka
+     */
     @Override
     public Mono<Health> health() {
         return checkKafkaHealth()
@@ -22,6 +36,12 @@ public class KafkaHealthIndicator implements ReactiveHealthIndicator {
                         .build());
     }
 
+    /**
+     * Converte resultado booleano em objeto Health do Actuator.
+     *
+     * @param isHealthy true se Kafka está disponível
+     * @return Health UP/DOWN com detalhes
+     */
     public Health buildHealthFromStatus(Boolean isHealthy) {
         if (Boolean.TRUE.equals(isHealthy)) {
             return Health.up()
@@ -34,6 +54,12 @@ public class KafkaHealthIndicator implements ReactiveHealthIndicator {
         }
     }
 
+    /**
+     * Mock de verificação - sempre retorna true.
+     *
+     *
+     * @return sempre true (mock para desenvolvimento)
+     */
     public Mono<Boolean> checkKafkaHealth() {
         return Mono.just(Boolean.TRUE);
     }
