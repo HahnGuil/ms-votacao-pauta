@@ -1,0 +1,15 @@
+{
+	"id": "466d5c02-1cd5-4829-ab81-7e70124914ab",
+	"name": "User",
+	"values": [
+		{
+			"key": "userIds",
+			"value": "[]",
+			"type": "default",
+			"enabled": true
+		}
+	],
+	"_postman_variable_scope": "environment",
+	"_postman_exported_at": "2025-08-12T19:17:02.903Z",
+	"_postman_exported_using": "Postman/11.58.1"
+}
