@@ -36,16 +36,16 @@ public class VotingService {
 
 
 
-    private static final String VOTING_CONTEXT = "/vote";
-    private static final String RESULT_CONTEXT = "/result";
+    private static final String VOTING_CONTEXT = "vote";
+    private static final String RESULT_CONTEXT = "result";
 
     public Mono<VotingResponseDTO> createVoting(VotingRequestDTO votingRequestDTO) {
         votingServiceLogger.info("Criando uma nova votação");
         Voting voting = convertToCollection(votingRequestDTO);
         return votingRepository.save(voting)
                 .map(savedVoting -> {
-                    String voteUrl = "http://localhost:" + serverPort + apiContext + "/"  + votingRequestDTO.apiVersion() +  VOTING_CONTEXT + "/" + savedVoting.getVotingId();
-                    String resultUrl = "http://localhost:" + serverPort + apiContext + "/" + votingRequestDTO.apiVersion() + RESULT_CONTEXT + "/" + savedVoting.getVotingId();
+                    String voteUrl = "http://localhost:" + serverPort + apiContext + "/" + VOTING_CONTEXT + "/" + votingRequestDTO.apiVersion() + "/" + savedVoting.getVotingId();
+                    String resultUrl = "http://localhost:" + serverPort + apiContext + "/" + RESULT_CONTEXT + "/" + votingRequestDTO.apiVersion() + "/" + savedVoting.getVotingId();
                     return new VotingResponseDTO(savedVoting.getVotingId(), voteUrl, savedVoting.getCloseVotingDate(), resultUrl);
                 });
     }
