@@ -1,6 +1,15 @@
 package br.com.hahn.votacao.domain.dto.request;
 
-public record VotingRequestDTO(String subject, String userDefinedExpirationDate, String apiVersion) {
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(description = "Dados de entrada para uma votação")
+public record VotingRequestDTO(
+        @Schema(description = "Pauta da votação", example = "Aprovação de aumento na divisão de lucros")
+        String subject,
+        @Schema(description = "Tempo que o usuário definiu como limite da votação. Se for Nulo ou 0 o tempo será de 1 minuto", example = "5 (Se refere a5 minutos)")
+        String userDefinedExpirationDate,
+        @Schema(description = "Versão da API que está sendo consumida. É passado como PathVariable", example = "v1")
+        String apiVersion) {
 
     public VotingRequestDTO withApiVersion(String apiVersion) {
         return new VotingRequestDTO(this.subject, this.userDefinedExpirationDate, apiVersion);
