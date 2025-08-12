@@ -35,9 +35,9 @@ public class OpenApiConfig {
                                 .email("guilherme.f.h@hotmail.com")
                                 .url("https://github.com/HahnGuil")
                         )
-                )
-                .servers(List.of(
-                        new Server().url("http://localhost:2500/api/votacao").description("Servidor de desenvolvimento")
+                ).servers(List.of(
+                        new Server().url("http://localhost:2500/api/votacao").description("Desenvolvimento"),
+                        new Server().url("http://localhost:30000/api/votacao").description("Homologação")
                 ));
     }
 
