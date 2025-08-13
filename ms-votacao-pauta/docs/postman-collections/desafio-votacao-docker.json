@@ -1,0 +1,419 @@
+{
+	"info": {
+		"_postman_id": "367ec5ad-8b23-491c-96ee-fd43d2068a7d",
+		"name": "desafio-votacao-docker",
+		"description": "Collection para testar os End-points das api de votação de pautas para cooperativas.\n\nEsta collection é para testar após o build no container docker.\n\nPara acessar os end-points use: http:localhost:30000/api/votacao/v1\n\nSwagger: [http://localhost:30000/api/votacao/swagger-ui.html](http://localhost:30000/api/votacao/swagger-ui.html)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "28830753"
+	},
+	"item": [
+		{
+			"name": "User",
+			"item": [
+				{
+					"name": "Create-single-user",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Gera nome aleatório",
+									"const nomes = ['João', 'Maria', 'Pedro', 'Ana', 'Carlos', 'Lucia', 'Rafael', 'Beatriz'];",
+									"const sobrenomes = ['Silva', 'Santos', 'Oliveira', 'Souza', 'Lima', 'Pereira'];",
+									"",
+									"const nome = nomes[Math.floor(Math.random() * nomes.length)];",
+									"const sobrenome = sobrenomes[Math.floor(Math.random() * sobrenomes.length)];",
+									"",
+									"// Gera CPF único (11 dígitos)",
+									"const cpf = Math.floor(Math.random() * 90000000000) + 10000000000;",
+									"",
+									"pm.globals.set(\"userName\", nome + \" \" + sobrenome);",
+									"pm.globals.set(\"userCPF\", cpf.toString());",
+									"",
+									"console.log(\"Criando usuário:\", nome + \" \" + sobrenome, \"CPF:\", cpf);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userName\": \"{{userName}}\",\n  \"userCPF\": \"{{userCPF}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:30000/api/votacao/user/v1/create-user",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "30000",
+							"path": [
+								"api",
+								"votacao",
+								"user",
+								"v1",
+								"create-user"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create-Multi-User",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Gera nome aleatório",
+									"const nomes = ['João', 'Maria', 'Pedro', 'Ana', 'Carlos', 'Lucia', 'Rafael', 'Beatriz'];",
+									"const sobrenomes = ['Silva', 'Santos', 'Oliveira', 'Souza', 'Lima', 'Pereira'];",
+									"",
+									"const nome = nomes[Math.floor(Math.random() * nomes.length)];",
+									"const sobrenome = sobrenomes[Math.floor(Math.random() * sobrenomes.length)];",
+									"",
+									"// Gera CPF único (11 dígitos)",
+									"const cpf = Math.floor(Math.random() * 90000000000) + 10000000000;",
+									"",
+									"pm.globals.set(\"userName\", nome + \" \" + sobrenome);",
+									"pm.globals.set(\"userCPF\", cpf.toString());",
+									"",
+									"console.log(\"Criando usuário:\", nome + \" \" + sobrenome, \"CPF:\", cpf);",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Verifica se deu certo",
+									"if (pm.response.code === 200 || pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    const userId = response.userId;",
+									"    ",
+									"    // Pega lista atual de IDs",
+									"    let userIds = pm.collectionVariables.get(\"userIds\") || \"[]\";",
+									"    userIds = JSON.parse(userIds);",
+									"    ",
+									"    // Adiciona novo ID",
+									"    userIds.push(userId);",
+									"    ",
+									"    // Salva lista atualizada",
+									"    pm.collectionVariables.set(\"userIds\", JSON.stringify(userIds));",
+									"    ",
+									"    console.log(`✅ Usuário ${userIds.length} criado: ${userId}`);",
+									"} else {",
+									"    console.log(\"❌ Erro ao criar usuário:\", pm.response.text());",
+									"}"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userName\": \"{{userName}}\",\n  \"userCPF\": \"{{userCPF}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:30000/api/votacao/user/v1/create-user",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "30000",
+							"path": [
+								"api",
+								"votacao",
+								"user",
+								"v1",
+								"create-user"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Nesta pasta estão os end-points para o controller de User\n\nExistem dois end-poins para User.\n\n- **Create-single-user**\n    \n    - Cria um usuário por vez cada vez que é acionado.\n        \n- **Create-Multi-user**\n    \n    - Cria multiplos usuários, de acordo com a forma é rodada a Collection. Ajuda para popular o banco com muitos usuários. E usa envs-votacao.\n        \n\nEste é um exemplo de como o dody da requisição deve ser:\n\n**{**\n\n**\"userName\" : \" João da Silva\",**\n\n**\"userCPF\" : \"123456789012\"**\n\n**}**\n\nNome de usuário e CPF\n\n- Não se pode cadastrar o mesmo CPF duas vezes.\n    \n\n## **Passos para usar Multi-user**\n\n1. Import o arquivo envs-votacao.json\n    \n    1. No menu: environments do Postman, clique em \"Import\" e selecione o arquivo\n        \n    2. Ele esta em ms-votacao-pauta/docs/postman-environments\n        \n2. Clique no nome da Collection desafio-votacao\n    \n3. Clique em \"Run\" (quadradinho com um botão de \"Play\")\n    \n4. Desmarque todas as opções em \"Deselect All\"\n    \n5. Selecione o request Create-Multi-user\n    \n6. No campo \"Interations\" coloque a quantidade de requisições que queira fazer.\n    \n    1. Você pode definir um tempo de delay para ter um intervalo em cada requisição.\n        \n    2. O tempo é definido em ms, portanto 1000 é igual a 1s\n        \n7. Clique no botão Laranja escrito RUN DESAFIO VOTACAO para iniciar\n    \n8. O Postman irá fazer a sequencia de requisição e ir exibindo as respostas na sequencia.\n    \n    1. Ao final você pode ver o tempo que ele levou para executar tudo.\n        \n\nAs requisições serão salvas na variavel userIds e facilitaram o uso das requisições de Voto.\n\n**Create-single-user**\n\n- A requisição create single user esta configurada com um pré-script que gera nomes e Cpf aleatórios para criar usuáriois.\n    \n- Ela não salva em variaveis, portanto os usuários criados aqui não serão usados no multi-vote"
+		},
+		{
+			"name": "Voting",
+			"item": [
+				{
+					"name": "Create-Voting",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"subject\": \"Aprovação de distribuição de Lucros\",\n    \"userDefinedExpirationDate\" : \"2\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:30000/api/votacao/voting/v1/create-voting",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "30000",
+							"path": [
+								"api",
+								"votacao",
+								"voting",
+								"v1",
+								"create-voting"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Nesta pasta estão os end-poins para o controller Vote\n\nExiste apenas um end-point para Voting o de criação de votação.\n\nExemplo body da requisição é assim:\n\n**{**\n\n**\"subject: \"Aumento na distribuição de lucros de 2024\",**\n\n**\"userDefinedExpirationDate\" : \"5\"**\n\n**}**\n\n- **userDefinedExpirationDate deve ser o tempo em minutos, somente o número**\n    \n\nPauta da votação e o tempo de expiração"
+		},
+		{
+			"name": "Vote",
+			"item": [
+				{
+					"name": "Single-Vote",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"689b91162436c8290bfcee86\",\n  \"voteOption\" : \"NAO\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:30000/api/votacao/vote/v1/689b91392436c8290bfcee87",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "30000",
+							"path": [
+								"api",
+								"votacao",
+								"vote",
+								"v1",
+								"689b91392436c8290bfcee87"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Multi-vote",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Pega todos os userIds criados",
+									"let userIds = pm.collectionVariables.get(\"userIds\") || \"[]\";",
+									"userIds = JSON.parse(userIds);",
+									"",
+									"if (userIds.length === 0) {",
+									"    console.log(\"❌ Nenhum usuário encontrado!\");",
+									"    return;",
+									"}",
+									"",
+									"// Seleciona aleatoriamente",
+									"const randomUserId = userIds[Math.floor(Math.random() * userIds.length)];",
+									"const voteOptions = [\"SIM\", \"NAO\"];",
+									"const randomVote = voteOptions[Math.floor(Math.random() * voteOptions.length)];",
+									"",
+									"pm.globals.set(\"selectedUserId\", randomUserId);",
+									"pm.globals.set(\"selectedVoteOption\", randomVote);",
+									"",
+									"console.log(`🗳️ UserID: ${randomUserId}, Voto: ${randomVote}`);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200 || pm.response.code === 201) {",
+									"    console.log(\"✅ Voto registrado!\");",
+									"} else {",
+									"    console.log(\"❌ Erro:\", pm.response.text());",
+									"}"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"{{selectedUserId}}\",\n  \"voteOption\": \"{{selectedVoteOption}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:30000/api/votacao/vote/v1/689cb734d8a6105b8a1e823a",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "30000",
+							"path": [
+								"api",
+								"votacao",
+								"vote",
+								"v1",
+								"689cb734d8a6105b8a1e823a"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Assim como no User, existem duas requisições para Vote.\n\n- Create-Single-Vote\n    \n    - Que criar apenas um voto por vez\n        \n- Create-Multi-vote\n    \n    - Faz multiplas requisições para uma votação usando os usuários de userIds.\n        \n\nExemplo de body:\n\n**{**\n\n**\"userId\": \"689b9013bdddf923f7866539\",**\n\n**\"voteOption\" : \"NAO\"**\n\n**}**\n\n- userID é o id do usuário: **689b9013bdddf923f7866539**\n    \n- voteOpton, não pode ter acentos\n    \n\n# Para usar o Multi-Vote\n\n1. PRIMEIRO RODE O CREATE-MULTI-USER\n    \n2. Clique na Collection desafio-votacao\n    \n3. Clique no quadradinho \"Run\"\n    \n4. Seleciona o request de multi-vote\n    \n5. Determine a quantidade de interações (votos) que queira fazer.\n    \n    1. Busque o mesmo número de usuários que criou um menor, se for maior ele vai repedir e vai recber negativas.\n        \n    2. Defina ou não um delay em ms entre cada requisição"
+		},
+		{
+			"name": "Result",
+			"item": [
+				{
+					"name": "Check-result",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:30000/api/votacao/result/v1/689b91392436c8290bfcee87",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "30000",
+							"path": [
+								"api",
+								"votacao",
+								"result",
+								"v1",
+								"689b91392436c8290bfcee87"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Check-Result-Exists",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:30000/api/votacao/result/v1/689b91392436c8290bfcee87/exists",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "30000",
+							"path": [
+								"api",
+								"votacao",
+								"result",
+								"v1",
+								"689b91392436c8290bfcee87",
+								"exists"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Nesta pasta estão os end-points para o controller Result\n\nExistem dois end-points para Result\n\n- Check-result\n    \n    - Use para ver o resultado de uma votação\n        \n        - Passe o votingId da votação desejada na requisição\n            \n        - Ex: http://localhost:30000/api/votacao/result/v1/6898f183b6518267ea09eed3\n            \n- Check-existe-votação\n    \n    - Use para verificar se uma votação já terminou (Tempo de expiração acabou)\n        \n    - Passe o votingId na requisição antes do exists\n        \n    - Ex: http://localhost:30000/api/votacao/v1/result/6898f183b6518267ea09eed3/exists\n        \n\nExemplo de votingId: 6898f183b6518267ea09eed3"
+		},
+		{
+			"name": "Swagger",
+			"item": [
+				{
+					"name": "Swagger",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:30000/api/votacao/swagger-ui.html",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "30000",
+							"path": [
+								"api",
+								"votacao",
+								"swagger-ui.html"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Nesta pasta tem o end-point do Swagger.\n\nBasta copiar o endereço e colar no navegador"
+		},
+		{
+			"name": "Health-check",
+			"item": [
+				{
+					"name": "health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:30000/api/votacao/actuator/health",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "30000",
+							"path": [
+								"api",
+								"votacao",
+								"actuator",
+								"health"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Nesta pasta está o health check, use para certificar que a API esta no ar\n\nEla possui apenas o health check e o validador de CPF que é consumido pelo MS-VOTAÇÃO"
+		}
+	]
+}
