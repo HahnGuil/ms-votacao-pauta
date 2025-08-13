@@ -166,8 +166,8 @@ public class MsVotacaoPautaApplication {
                     startupLogger.info("🌐 Aplicação disponível em:");
                     startupLogger.info("   • Local:    http://localhost:{}", serverPort);
                     startupLogger.info("   • Network:  http://{}:{}", hostAddress, serverPort);
-                    startupLogger.info("📊 Swagger:   http://localhost:{}/swagger-ui.html", serverPort);
-                    startupLogger.info("🔍 Actuator: http://localhost:{}/actuator/health", serverPort);
+                    startupLogger.info("📊 Swagger:   http://localhost:{}/api/votacao/swagger-ui.html", serverPort);
+                    startupLogger.info("🔍 Actuator: http://localhost:{}/api/votacao/actuator/health", serverPort);
                     startupLogger.info(SEPARATOR_LINE);
                     startupLogger.info("🎯 COMPONENTES ATIVOS:");
 

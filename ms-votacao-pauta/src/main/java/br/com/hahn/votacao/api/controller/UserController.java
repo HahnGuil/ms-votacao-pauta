@@ -28,7 +28,7 @@ public class UserController extends BaseController {
 
     /**
      * Cria um novo usuário
-     *
+     * <p>
      * Adapta a versão da API recebida no parametro de versionamento e colcoa em um DTO para o service consumir.
      *
      * @param version versão da API que está sendo utilizada current ou legacy

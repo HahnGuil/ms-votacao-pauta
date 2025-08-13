@@ -27,7 +27,7 @@ public class VoteController extends BaseController {
 
     /**
      * Realiza o voto do usuário na votação informada
-     *
+     * <p>
      * Coloca a versão da API recebida por parametro no DTO para o serviço
      *
      * @param version versão da API que esta sendo utilizada
