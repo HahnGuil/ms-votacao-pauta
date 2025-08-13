@@ -21,4 +21,3 @@ RUN apk add --no-cache curl
 COPY --from=build /app/target/validador-0.0.1-SNAPSHOT.jar app.jar
 
 EXPOSE 26000
-CMD ["java", "-jar", "app.jar"]

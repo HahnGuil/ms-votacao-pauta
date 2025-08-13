@@ -24,4 +24,3 @@ COPY --from=build /app/target/ms-votacao-pauta-0.0.1-SNAPSHOT.jar app.jar
 
 # Run the application with docker profile
 EXPOSE 30000
-CMD ["java", "-Dspring.profiles.active=docker", "-jar", "app.jar"]
