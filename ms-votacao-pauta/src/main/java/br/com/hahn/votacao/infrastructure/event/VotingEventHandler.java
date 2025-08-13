@@ -18,7 +18,7 @@ import reactor.core.scheduler.Schedulers;
  * Architecture para desacoplamento entre domínios.
  * <p>
  * EVENTOS TRATADOS:
- * - VotingClosedEvent: Acionado quando votação expira ou é fechada manualmente
+ * - VotingClosedEvent: Acionado quando votação expira
  * <p>
  * PROCESSAMENTO ASSÍNCRONO:
  * - Execução via thread pool eventTaskExecutor (AsyncConfig)
