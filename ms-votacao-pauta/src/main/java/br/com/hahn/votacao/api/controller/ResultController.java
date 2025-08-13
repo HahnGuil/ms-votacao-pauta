@@ -2,6 +2,7 @@ package br.com.hahn.votacao.api.controller;
 
 import br.com.hahn.votacao.api.controller.base.BaseController;
 import br.com.hahn.votacao.domain.dto.context.ServiceRequestContext;
+import br.com.hahn.votacao.domain.dto.response.ResultExistsResponseDTO;
 import br.com.hahn.votacao.domain.dto.response.ResultResponseDTO;
 import br.com.hahn.votacao.domain.service.ResultService;
 import org.springframework.http.ResponseEntity;
@@ -33,14 +34,14 @@ public class ResultController extends BaseController {
     }
 
     /**
-     * Verifica se o resultado da votação já esta disponível para consulta
+     * Verifica se o resultado da votação já está disponível para consulta.
      *
      * @param version versão da API a ser utilizada, current ou legacy
-     * @param votingId id identificador da votação recebido após criar uma votação
-     * @return Mono contendo um boolean indicando se o resultado existe ou não.
+     * @param votingId identificador da votação recebido após criar uma votação
+     * @return Mono contendo um ResponseEntity com ResultExistsResponseDTO, estruturado como JSON: { "exists": true/false }
      */
     @GetMapping("/{version}/{votingId}/exists")
-    public Mono<ResponseEntity<Boolean>> resultExists(@PathVariable String version, @PathVariable String votingId) {
+    public Mono<ResponseEntity<ResultExistsResponseDTO>> resultExists(@PathVariable String version, @PathVariable String votingId) {
         ServiceRequestContext context = ServiceRequestContext.of(votingId, version);
         return resultService.isResultAvailable(context).map(ResponseEntity::ok);
     }

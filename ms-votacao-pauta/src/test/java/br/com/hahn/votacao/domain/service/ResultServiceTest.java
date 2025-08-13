@@ -2,6 +2,7 @@ package br.com.hahn.votacao.domain.service;
 
 import br.com.hahn.votacao.domain.dto.ResultCreateDTO;
 import br.com.hahn.votacao.domain.dto.context.ServiceRequestContext;
+import br.com.hahn.votacao.domain.dto.response.ResultExistsResponseDTO;
 import br.com.hahn.votacao.domain.enums.VoteOption;
 import br.com.hahn.votacao.domain.enums.VotingResult;
 import br.com.hahn.votacao.domain.exception.ResultNotReadyException;
@@ -49,7 +50,7 @@ class ResultServiceTest {
         when(resultRepository.findById(votingId)).thenReturn(Mono.just(result));
 
         StepVerifier.create(resultService.isResultAvailable(ctx))
-                .expectNext(true)
+                .expectNextMatches(ResultExistsResponseDTO::exists)
                 .verifyComplete();
     }
 
@@ -61,7 +62,7 @@ class ResultServiceTest {
         when(resultRepository.findById(votingId)).thenReturn(Mono.empty());
 
         StepVerifier.create(resultService.isResultAvailable(ctx))
-                .expectNext(false)
+                .expectNextMatches(dto -> !dto.exists())
                 .verifyComplete();
     }
 

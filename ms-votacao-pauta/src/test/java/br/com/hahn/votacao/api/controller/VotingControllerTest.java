@@ -14,9 +14,6 @@ import org.springframework.http.ResponseEntity;
 import reactor.core.publisher.Mono;
 
 import java.lang.reflect.Field;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -33,18 +30,17 @@ class VotingControllerTest {
 
     @Test
     void testCreateVoting_ReturnsCreatedResponse() throws Exception {
-        // Inicializa o campo herdado para evitar NullPointerException
+        // Initialize inherited field to avoid NullPointerException
         Field field = votingController.getClass().getSuperclass().getDeclaredField("apiCurrentVersion");
         field.setAccessible(true);
         field.set(votingController, "/v1");
 
         String version = "v1";
-        VotingRequestDTO requestDTO = new VotingRequestDTO("Assunto", "2024-12-31T23:59:59", "v1");
+        // Use Integer for expiration as expected by VotingRequestDTO
+        VotingRequestDTO requestDTO = new VotingRequestDTO("Assunto", 60, "v1");
 
-        LocalDateTime localDateTime = LocalDateTime.parse(requestDTO.userDefinedExpirationDate());
-        Instant instant = localDateTime.atZone(ZoneId.systemDefault()).toInstant();
-
-        VotingResponseDTO responseDTO = new VotingResponseDTO("voting-id", "api/vote", instant, "api/result");
+        // All parameters as String for VotingResponseDTO
+        VotingResponseDTO responseDTO = new VotingResponseDTO("voting-id", "api/vote", "2024-12-31T23:59:59", "api/result");
 
         when(votingService.createVoting(any(VotingRequestDTO.class)))
                 .thenReturn(Mono.just(responseDTO));

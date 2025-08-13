@@ -16,6 +16,8 @@ import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 /**
  * Service responsável pelo gerenciamento do ciclo de vida das votações.
@@ -36,8 +38,12 @@ public class VotingService {
     private static final String RESULT_CONTEXT = "result";
     private static final String LOCALHOST = "http://localhost:";
     private static final long DEFAULT_EXPIRATION_MINUTES = 1L;
+    private static final DateTimeFormatter RESPONSE_DATE_FORMATTER =
+            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm").withZone(ZoneId.systemDefault());
 
     private final VotingRepository votingRepository;
+
+
 
     @Value("${server.port}")
     private String serverPort;
@@ -187,11 +193,12 @@ public class VotingService {
     private VotingResponseDTO buildVotingResponse(String apiVersion, Voting savedVoting) {
         String voteUrl = buildVoteUrl(apiVersion, savedVoting.getVotingId());
         String resultUrl = buildResultUrl(apiVersion, savedVoting.getVotingId());
+        String formattedCloseDate = RESPONSE_DATE_FORMATTER.format(savedVoting.getCloseVotingDate());
 
         return new VotingResponseDTO(
                 savedVoting.getVotingId(),
                 voteUrl,
-                savedVoting.getCloseVotingDate(),
+                formattedCloseDate,
                 resultUrl
         );
     }
@@ -254,9 +261,10 @@ public class VotingService {
      * @return timestamp calculado para fechamento da votação
      * @throws InvalidFormatExpirationDate se formato do tempo for inválido
      */
-    private Instant createExpirationDate(Instant openVotingDate, String userDefinedExpirationDate) {
+    private Instant createExpirationDate(Instant openVotingDate, Integer userDefinedExpirationDate) {
         votingServiceLogger.info("Criando data de expiração para a votação");
         long minutes = parseExpirationMinutes(userDefinedExpirationDate);
+        votingServiceLogger.info("Tempo de expiração definido (minutos): {}", minutes);
         return openVotingDate.plus(Duration.ofMinutes(minutes));
     }
 
@@ -270,17 +278,12 @@ public class VotingService {
      * @return tempo validado em minutos
      * @throws InvalidFormatExpirationDate se formato for inválido
      */
-    private long parseExpirationMinutes(String userDefinedExpirationDate) {
-        if (userDefinedExpirationDate == null || userDefinedExpirationDate.isBlank()) {
+    private long parseExpirationMinutes(Integer userDefinedExpirationDate) {
+        if (userDefinedExpirationDate == null || userDefinedExpirationDate <= 0) {
+            votingServiceLogger.warn("Tempo de expiração inválido ou nulo, ajustando para 1 minuto.");
             return DEFAULT_EXPIRATION_MINUTES;
         }
-
-        try {
-            long minutes = Long.parseLong(userDefinedExpirationDate);
-            return minutes <= 0 ? DEFAULT_EXPIRATION_MINUTES : minutes;
-        } catch (NumberFormatException e) {
-            throw new InvalidFormatExpirationDate("Invalid time format, poll timeout set to 1 minute.");
-        }
+        return userDefinedExpirationDate;
     }
 }
 

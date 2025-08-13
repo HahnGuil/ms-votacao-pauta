@@ -2,6 +2,7 @@ package br.com.hahn.votacao.domain.service;
 
 import br.com.hahn.votacao.domain.dto.ResultCreateDTO;
 import br.com.hahn.votacao.domain.dto.context.ServiceRequestContext;
+import br.com.hahn.votacao.domain.dto.response.ResultExistsResponseDTO;
 import br.com.hahn.votacao.domain.dto.response.ResultResponseDTO;
 import br.com.hahn.votacao.domain.enums.VoteOption;
 import br.com.hahn.votacao.domain.enums.VotingResult;
@@ -16,6 +17,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
@@ -31,6 +34,9 @@ import java.util.List;
 public class ResultService {
 
     private static final Logger resultServiceLogger = LoggerFactory.getLogger(ResultService.class);
+
+    private static final DateTimeFormatter RESPONSE_DATE_FORMATTER =
+            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm").withZone(ZoneId.systemDefault());
 
     private final ResultRepository resultRepository;
     private final VoteService voteService;
@@ -68,11 +74,11 @@ public class ResultService {
     /**
      * Verifica se resultado está disponível para consulta.
      */
-    public Mono<Boolean> isResultAvailable(ServiceRequestContext requestContext) {
+    public Mono<ResultExistsResponseDTO> isResultAvailable(ServiceRequestContext requestContext) {
         return resultRepository.findById(requestContext.resourceId())
-                .map(result -> true)
-                .defaultIfEmpty(false)
-                .doOnNext(exists -> resultServiceLogger.debug("Resultado disponível para votingId {}: {}", requestContext.resourceId(), exists));
+                .map(result -> new ResultExistsResponseDTO(true))
+                .defaultIfEmpty(new ResultExistsResponseDTO(false))
+                .doOnNext(dto -> resultServiceLogger.debug("Resultado disponível para votingId {}: {}", requestContext.resourceId(), dto.exists()));
     }
 
     /**
@@ -151,13 +157,14 @@ public class ResultService {
     private Mono<ResultResponseDTO> checkVotingStatusAndThrowAppropriateException(String votingId) {
         return votingService.findById(votingId)
                 .<ResultResponseDTO>flatMap(voting -> {
+                    String formattedCloseDate = RESPONSE_DATE_FORMATTER.format(voting.getCloseVotingDate());
                     if (voting.isVotingSatus()) {
                         return Mono.error(new ResultNotReadyException(
-                                "Result not ready yet. Voting is still active and will close at: " + voting.getCloseVotingDate()
+                                "Result not ready yet. Voting is still active and will close at: " + formattedCloseDate
                         ));
                     } else {
                         return Mono.error(new ResultNotReadyException(
-                                "Result is being processed. Voting ended at: " + voting.getCloseVotingDate() +
+                                "Result is being processed. Voting ended at: " + formattedCloseDate +
                                         ". Please try again in a few moments."
                         ));
                     }

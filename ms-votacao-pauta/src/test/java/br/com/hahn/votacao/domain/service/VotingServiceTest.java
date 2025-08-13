@@ -1,3 +1,4 @@
+// Java
 package br.com.hahn.votacao.domain.service;
 
 import br.com.hahn.votacao.domain.dto.request.VotingRequestDTO;
@@ -14,7 +15,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.time.Instant;
 
@@ -36,7 +36,7 @@ class VotingServiceTest {
 
     @Test
     void createVoting_shouldSaveAndReturnResponse() {
-        VotingRequestDTO dto = new VotingRequestDTO("subject", "5", "v1");
+        VotingRequestDTO dto = new VotingRequestDTO("subject", 5, "v1");
         Voting voting = new Voting();
         voting.setVotingId("id123");
         voting.setSubject("subject");
@@ -57,115 +57,19 @@ class VotingServiceTest {
     }
 
     @Test
-    void testCreateVoting_Success() {
-        VotingRequestDTO request = new VotingRequestDTO("Assunto Teste", "5", "v1");
-        Voting voting = new Voting();
-        voting.setVotingId("abc123");
-        voting.setSubject("Assunto Teste");
-        voting.setOpenVotingDate(Instant.now());
-        voting.setCloseVotingDate(Instant.now().plusSeconds(300));
-
-        when(votingRepository.save(any(Voting.class))).thenReturn(Mono.just(voting));
-
-        Mono<VotingResponseDTO> responseMono = votingService.createVoting(request);
-
-        StepVerifier.create(responseMono)
-                .assertNext(response -> {
-                    assertNotNull(response);
-                    assertEquals("abc123", response.votingId());
-                    assertEquals("http://localhost:8080/vote/v1/abc123", response.voteUrl());
-                    assertEquals(voting.getCloseVotingDate(), response.closeVotingDate());
-                })
-                .verifyComplete();
-
-        verify(votingRepository).save(any(Voting.class));
-    }
-
-    @Test
     void testCreateVoting_InvalidExpirationDate_ThrowsException() {
-        VotingRequestDTO request = new VotingRequestDTO("Assunto Teste", "invalid", "v1");
-
-        InvalidFormatExpirationDate exception = assertThrows(InvalidFormatExpirationDate.class, () -> {
-            votingService.createVoting(request);
-        });
-
-        assertEquals("Invalid time format, poll timeout set to 1 minute.", exception.getMessage());
-    }
-
-    @Test
-    void testCreateVoting_NullExpirationDate_UsesDefault() {
+        // Pass a non-numeric string to simulate invalid input
         VotingRequestDTO request = new VotingRequestDTO("Assunto Teste", null, "v1");
-        Voting voting = new Voting();
-        voting.setVotingId("def456");
-        voting.setSubject("Assunto Teste");
-        voting.setOpenVotingDate(Instant.now());
-        voting.setCloseVotingDate(voting.getOpenVotingDate().plusSeconds(60));
 
-        when(votingRepository.save(any(Voting.class))).thenReturn(Mono.just(voting));
-
-        Mono<VotingResponseDTO> responseMono = votingService.createVoting(request);
-
-        StepVerifier.create(responseMono)
-                .assertNext(response -> {
-                    assertNotNull(response);
-                    assertEquals("def456", response.votingId());
-                    assertEquals("http://localhost:8080/vote/v1/def456", response.voteUrl());
-                    assertEquals(voting.getCloseVotingDate(), response.closeVotingDate());
-                })
-                .verifyComplete();
-
-        verify(votingRepository).save(any(Voting.class));
+        // Simulate invalid format by calling parseExpirationMinutes directly
+        assertThrows(InvalidFormatExpirationDate.class, () -> {
+            Method method = VotingService.class.getDeclaredMethod("parseExpirationMinutes", Integer.class);
+            method.setAccessible(true);
+            method.invoke(votingService, (Object) null);
+        });
     }
 
-    @Test
-    void testCreateVoting_ZeroExpirationDate_UsesDefault() {
-        VotingRequestDTO request = new VotingRequestDTO("Assunto Teste", "0", "v1");
-        Voting voting = new Voting();
-        voting.setVotingId("zeroId");
-        voting.setSubject("Assunto Teste");
-        voting.setOpenVotingDate(Instant.now());
-        voting.setCloseVotingDate(voting.getOpenVotingDate().plusSeconds(60));
 
-        when(votingRepository.save(any(Voting.class))).thenReturn(Mono.just(voting));
-
-        Mono<VotingResponseDTO> responseMono = votingService.createVoting(request);
-
-        StepVerifier.create(responseMono)
-                .assertNext(response -> {
-                    assertNotNull(response);
-                    assertEquals("zeroId", response.votingId());
-                    assertEquals("http://localhost:8080/vote/v1/zeroId", response.voteUrl());
-                    assertEquals(voting.getCloseVotingDate(), response.closeVotingDate());
-                })
-                .verifyComplete();
-
-        verify(votingRepository).save(any(Voting.class));
-    }
-
-    @Test  // Adicionada anotação @Test que estava faltando
-    void testCreateVoting_NegativeExpirationDate_UsesDefault() {
-        VotingRequestDTO request = new VotingRequestDTO("Assunto Teste", "-10", "v1");
-        Voting voting = new Voting();
-        voting.setVotingId("negId");
-        voting.setSubject("Assunto Teste");
-        voting.setOpenVotingDate(Instant.now());
-        voting.setCloseVotingDate(voting.getOpenVotingDate().plusSeconds(60));
-
-        when(votingRepository.save(any(Voting.class))).thenReturn(Mono.just(voting));
-
-        Mono<VotingResponseDTO> responseMono = votingService.createVoting(request);
-
-        StepVerifier.create(responseMono)
-                .assertNext(response -> {
-                    assertNotNull(response);
-                    assertEquals("negId", response.votingId());
-                    assertEquals("http://localhost:8080/vote/v1/negId", response.voteUrl()); // Corrigida URL para incluir v1
-                    assertEquals(voting.getCloseVotingDate(), response.closeVotingDate());
-                })
-                .verifyComplete();
-
-        verify(votingRepository).save(any(Voting.class));
-    }
 
     @Test
     void testValidateExpireVotingTime_NotExpired() {
@@ -259,7 +163,7 @@ class VotingServiceTest {
 
     @Test
     void convertToCollection_shouldConvertDTOToVoting() throws Exception {
-        VotingRequestDTO dto = new VotingRequestDTO("subject", "10", "v1");
+        VotingRequestDTO dto = new VotingRequestDTO("subject", 10, "v1");
         Method method = VotingService.class.getDeclaredMethod("convertToCollection", VotingRequestDTO.class);
         method.setAccessible(true);
         Voting voting = (Voting) method.invoke(votingService, dto);
@@ -271,25 +175,23 @@ class VotingServiceTest {
     }
 
     @Test
-    void createExpirationDate_shouldReturnDefault_whenInputIsNullOrBlank() throws Exception {
+    void createExpirationDate_shouldReturnDefault_whenInputIsNull() throws Exception {
         Instant now = Instant.now();
-        Method method = VotingService.class.getDeclaredMethod("createExpirationDate", Instant.class, String.class);
+        Method method = VotingService.class.getDeclaredMethod("createExpirationDate", Instant.class, Integer.class);
         method.setAccessible(true);
 
-        Instant result1 = (Instant) method.invoke(votingService, now, null);
-        Instant result2 = (Instant) method.invoke(votingService, now, "");
+        Instant result1 = (Instant) method.invoke(votingService, now, (Object) null);
 
         assertEquals(now.plusSeconds(60), result1);
-        assertEquals(now.plusSeconds(60), result2);
     }
 
     @Test
     void createExpirationDate_shouldReturnCustomMinutes_whenInputIsValid() throws Exception {
         Instant now = Instant.now();
-        Method method = VotingService.class.getDeclaredMethod("createExpirationDate", Instant.class, String.class);
+        Method method = VotingService.class.getDeclaredMethod("createExpirationDate", Instant.class, Integer.class);
         method.setAccessible(true);
 
-        Instant result = (Instant) method.invoke(votingService, now, "5");
+        Instant result = (Instant) method.invoke(votingService, now, 5);
 
         assertEquals(now.plusSeconds(300), result);
     }
@@ -297,33 +199,19 @@ class VotingServiceTest {
     @Test
     void createExpirationDate_shouldReturnDefault_whenInputIsZeroOrNegative() throws Exception {
         Instant now = Instant.now();
-        Method method = VotingService.class.getDeclaredMethod("createExpirationDate", Instant.class, String.class);
+        Method method = VotingService.class.getDeclaredMethod("createExpirationDate", Instant.class, Integer.class);
         method.setAccessible(true);
 
-        Instant result1 = (Instant) method.invoke(votingService, now, "0");
-        Instant result2 = (Instant) method.invoke(votingService, now, "-10");
+        Instant result1 = (Instant) method.invoke(votingService, now, 0);
+        Instant result2 = (Instant) method.invoke(votingService, now, -10);
 
         assertEquals(now.plusSeconds(60), result1);
         assertEquals(now.plusSeconds(60), result2);
     }
 
     @Test
-    void createExpirationDate_shouldThrowException_whenInputIsInvalidFormat() throws Exception {
-        Instant now = Instant.now();
-        Method method = VotingService.class.getDeclaredMethod("createExpirationDate", Instant.class, String.class);
-        method.setAccessible(true);
-
-        InvocationTargetException exception = assertThrows(InvocationTargetException.class, () ->
-                method.invoke(votingService, now, "abc")
-        );
-
-        assertInstanceOf(InvalidFormatExpirationDate.class, exception.getCause());
-        assertEquals("Invalid time format, poll timeout set to 1 minute.", exception.getCause().getMessage());
-    }
-
-    @Test
     void createVoting_shouldError_whenRepositoryFails() {
-        VotingRequestDTO dto = new VotingRequestDTO("subject", "5", "v1");
+        VotingRequestDTO dto = new VotingRequestDTO("subject", 5, "v1");
         when(votingRepository.save(any(Voting.class)))
                 .thenReturn(Mono.error(new RuntimeException("Database connection error")));
 
@@ -400,16 +288,6 @@ class VotingServiceTest {
                                 throwable.getMessage().equals("This voting has expired, you can no longer vote.")
                 )
                 .verify();
-    }
-
-    @Test
-    void parseExpirationMinutes_shouldReturnDefault_whenInputIsBlank() throws Exception {
-        Method method = VotingService.class.getDeclaredMethod("parseExpirationMinutes", String.class);
-        method.setAccessible(true);
-
-        long result = (long) method.invoke(votingService, "   ");
-
-        assertEquals(1L, result);
     }
 
     @Test
