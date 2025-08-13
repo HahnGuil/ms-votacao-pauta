@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   mongo-votacaodbDOCKER:
     image: mongo:7
