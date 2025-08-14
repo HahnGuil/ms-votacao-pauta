@@ -321,8 +321,7 @@ public class VoteBatchConsumer {
      * @return Mono<Long> resultado da operação Redis
      */
     private Mono<Long> cleanupRedisKey(Object vote) {
-        // Assumindo que vote tem métodos getVotingId() e getUserId()
-        String key = vote.toString(); // Implementar lógica adequada baseada no tipo retornado
+        String key = vote.toString();
 
         return redisTemplate.delete(key)
                 .doOnError(error ->
